@@ -1,0 +1,19 @@
+LIBRARY MESOCK32 
+EXPORTS 
+Close 
+CloseA 
+LIBMAIN 
+Line_Input 
+Open 
+OpenA 
+Print 
+PrintA 
+Receive 
+ReceiveA 
+Send 
+SendA 
+TCPClose 
+TCPListen 
+TCP_SetOption 
+UDPClose 
+UDPListen 
