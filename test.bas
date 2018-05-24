@@ -3,18 +3,37 @@
 
     input "press ENTER to begin.";a
 
-    message$ = "GET /index.html http/1.1" + chr$(13) + chr$(10) + _
-        "Host: chrisiverson.net"
-    hConn = TCPOpen("chrisiverson.net", 443)
+    message1$ = "GET /index.html HTTP/1.1"
+    message2$ = "Host: chrisiverson.net"
+
+goto [skipTLS1]
+
     CallDLL #sc, "InitTLS",_
-    hConn as ulong,_
     hTLS as ulong
+
+    Print hTLS
 
     CallDLL #sc, "BeginTLSClientNoValidation",_
     hTLS as ulong,_
     ret as long
 
     print "BeginTLS - ";ret
+
+[skipTLS1]
+    hConn = TCPOpen("chrisiverson.net", 80)
+    print TCPPrint(hConn, message1$)
+    print TCPPrint(hConn, message2$)
+    print TCPPrint(hConn, "")
+    print TCPReceive$(hConn)
+
+    goto [skipTLS2]
+
+    CallDLL #sc, "SetTLSSocket",_
+    hTLS as ulong,_
+    hConn as ulong,_
+    ret as long
+
+    print "SetTLSSocket - ";ret
 
     CallDLL #sc, "PerformClientHandshake",_
     hTLS as ulong,_
@@ -25,7 +44,9 @@
 
     CallDLL #sc, "EndTLS",_
     hTLS as ulong,_
-    ret as void
+    ret as long
+
+    [skipTLS2]
 
     res = TCPClose(hConn)
 

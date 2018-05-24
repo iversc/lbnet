@@ -6,3 +6,4 @@ EXPORTS
 	EndTLS @4
 	InitTLS @5
 	PerformClientHandshake @6
+	SetTLSSocket @7
