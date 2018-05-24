@@ -1,9 +1,9 @@
 LIBRARY LB-SChannel-Wrapper
 EXPORTS
-	BeginTLSClientNoValidation @1
-	DecryptReceive @2
-	EncryptSend @3
-	EndTLS @4
-	InitTLS @5
-	PerformClientHandshake @6
-	SetTLSSocket @7
+	BeginTLSClientNoValidation
+	DecryptReceive
+	EncryptSend
+	EndTLS
+	InitTLS
+	PerformClientHandshake
+	SetTLSSocket
