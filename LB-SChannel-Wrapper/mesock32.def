@@ -9,8 +9,10 @@ OpenA
 Print 
 PrintA 
 Receive 
+Receive@12 @9
 ReceiveA 
 Send 
+Send@8 @11
 SendA 
 TCPClose 
 TCPListen 

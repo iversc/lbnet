@@ -1,6 +1,6 @@
     open "LB-Schannel-Wrapper\mesock32.dll" for DLL as #me
-    open "Debug\LB-Schannel-Wrapper.dll" for DLL as #sc
-    
+    open "Debug\LB-SChannel-Wrapper.dll" for DLL as #sc
+
     input "press ENTER to begin.";a
 
     message$ = "GET /index.html http/1.1" + chr$(13) + chr$(10) + _
