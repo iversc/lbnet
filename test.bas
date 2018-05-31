@@ -1,11 +1,11 @@
-    open "Debug\LB-SChannel-Wrapper.dll" for DLL as #sc
+    call OpenTLSDLL
 
     input "press ENTER to begin.";a
 
     message1$ = "GET /index.html HTTP/1.1"
     message2$ = "Host: chrisiverson.net"
 
-'goto [skipTLS1]
+goto [skipTLS1]
 
     CallDLL #sc, "InitTLS",_
     hTLS as ulong
@@ -19,14 +19,45 @@
     print "BeginTLS - ";ret
 
 [skipTLS1]
-'    hConn = TCPOpen("chrisiverson.net", 80)
-'    hConn = TCPOpen("chrisiverson.net", 443)
-'    print TCPPrint(hConn, message1$)
-'    print TCPPrint(hConn, message2$)
-'    print TCPPrint(hConn, "")
-'    print TCPReceive$(hConn)
+    'These two lines function identically.
+    'You can specify known service ports(i.e. 80=http, 443=https, etc)
+    'by their service name instead of port number.
 
-'    goto [skipTLS2]
+    'sock = Connect("chrisiverson.net", "80")
+    sock = Connect("chrisiverson.net", "http")
+
+    If sock = -1 then
+        print "Connect() failed. - ";
+        print GetError()
+        goto [end]
+    end if
+
+    message$ = message1$ + chr$(13) + chr$(10)
+    message$ = message$ + message2$ + chr$(13) + chr$(10) + chr$(13) + chr$(10)
+    lenMessage = len(message$)
+
+    ret = Send(sock, message$, lenMessage)
+
+    if ret < 0 then
+        print "Send() failed. - ";
+        print GetError()
+
+        goto [socketEnd]
+    end if
+
+    bufLen = 1024
+    buf$ = space$(bufLen)
+
+    recCount = Receive(sock, buf$, bufLen)
+
+    if recCount < 0 then
+        print "Receive() failed - ";
+        print GetError()
+    end if
+
+    print left$(buf$, recCount)
+
+    goto [skipTLS2]
 
     CallDLL #sc, "SetTLSSocket",_
     hTLS as ulong,_
@@ -50,4 +81,53 @@
 
     'res = TCPClose(hConn)
 
-    close #sc
+    [socketEnd]
+    ret = CloseSocket(sock)
+
+    [end]
+    call CloseTLSDLL
+
+'====================
+'==Helper Functions==
+'====================
+Sub OpenTLSDLL
+    open "Debug\LB-Schannel-Wrapper.dll" for DLL as #LBSchannelWrapper
+End Sub
+
+Sub CloseTLSDLL
+    close #LBSchannelWrapper
+End Sub
+
+Function Connect(host$, srv$)
+    CallDLL #LBSchannelWrapper, "Connect",_
+    host$ as ptr,_
+    srv$ as ptr,_
+    Connect as long
+End Function
+
+Function CloseSocket(sock)
+    CallDLL #LBSchannelWrapper, "CloseSocket",_
+    sock as long,_
+    CloseSocket as long
+End Function
+
+Function GetError()
+    CallDLL #LBSchannelWrapper, "GetError",_
+    GetError as long
+End Function
+
+Function Send(sock, msg$, msgLen)
+    CallDLL #LBSchannelWrapper, "Send",_
+    sock as long,_
+    msg$ as ptr,_
+    msgLen as long,_
+    Send as long
+End Function
+
+Function Receive(sock, byref buf$, bufLen)
+    CallDLL #LBSchannelWrapper, "Receive",_
+    sock as long,_
+    buf$ as ptr,_
+    bufLen as long,_
+    Receive as long
+End Function

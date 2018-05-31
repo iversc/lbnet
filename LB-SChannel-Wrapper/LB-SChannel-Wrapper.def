@@ -11,3 +11,5 @@ EXPORTS
 	Connect
 	IsSocketInvalid
 	CloseSocket
+	Send
+	Receive
