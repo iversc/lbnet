@@ -5,14 +5,14 @@
     message1$ = "GET /index.html HTTP/1.1"
     message2$ = "Host: chrisiverson.net"
 
-goto [skipTLS1]
+'goto [skipTLS1]
 
-    CallDLL #sc, "InitTLS",_
+    CallDLL #LBSchannelWrapper, "InitTLS",_
     hTLS as ulong
 
     Print hTLS
 
-    CallDLL #sc, "BeginTLSClientNoValidation",_
+    CallDLL #LBSchannelWrapper, "BeginTLSClientNoValidation",_
     hTLS as ulong,_
     ret as long
 
@@ -24,7 +24,7 @@ goto [skipTLS1]
     'by their service name instead of port number.
 
     'sock = Connect("chrisiverson.net", "80")
-    sock = Connect("chrisiverson.net", "http")
+    sock = Connect("chrisiverson.net", "https")
 
     If sock = -1 then
         print "Connect() failed. - ";
@@ -35,6 +35,9 @@ goto [skipTLS1]
     message$ = message1$ + chr$(13) + chr$(10)
     message$ = message$ + message2$ + chr$(13) + chr$(10) + chr$(13) + chr$(10)
     lenMessage = len(message$)
+    hConn = sock
+
+goto [handshake]
 
     ret = Send(sock, message$, lenMessage)
 
@@ -58,22 +61,53 @@ goto [skipTLS1]
     print left$(buf$, recCount)
 
     goto [skipTLS2]
+[handshake]
 
-    CallDLL #sc, "SetTLSSocket",_
+    CallDLL #LBSchannelWrapper, "SetTLSSocket",_
     hTLS as ulong,_
     hConn as ulong,_
     ret as long
 
     print "SetTLSSocket - ";ret
 
-    CallDLL #sc, "PerformClientHandshake",_
+    CallDLL #LBSchannelWrapper, "PerformClientHandshake",_
     hTLS as ulong,_
     "chrisiverson.net" as ptr,_
     ret as long
 
     print "Handshake - ";ret
 
-    CallDLL #sc, "EndTLS",_
+    CallDLL #LBSchannelWrapper, "EncryptSend",_
+    hTLS as ulong,_
+    message$ as ptr,_
+    lenMessage as long,_
+    ret as long
+
+    If ret < 0 then
+        Print "EncryptSend() failed. - ";GetError()
+        goto [TLSend]
+    End if
+
+    Print "EncryptSend() succeeded."
+    bufLen = 1024
+    buf$ = space$(bufLen)
+
+    CallDLL #LBSchannelWrapper, "DecryptReceive",_
+    hTLS as ulong,_
+    buf$ as ptr,_
+    bufLen as long,_
+    ret as long
+
+    If ret < 0 then
+        print "DecryptReceive() failed. - ";GetError()
+        goto [TLSend]
+    end if
+
+    print "DecryptReceive() succeeded. - ";ret
+    Print left$(buf$, ret)
+
+    [TLSend]
+    CallDLL #LBSchannelWrapper, "EndTLS",_
     hTLS as ulong,_
     ret as long
 
