@@ -7,3 +7,7 @@ EXPORTS
 	InitTLS
 	PerformClientHandshake
 	SetTLSSocket
+	GetError
+	Connect
+	IsSocketInvalid
+	CloseSocket
