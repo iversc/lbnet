@@ -23,8 +23,8 @@
     'You can specify known service ports(i.e. 80=http, 443=https, etc)
     'by their service name instead of port number.
 
-    'sock = Connect("chrisiverson.net", "80")
-    sock = Connect("chrisiverson.net", "https")
+    'sock = Connect("chrisiverson.net", "80", 0)
+    sock = Connect("chrisiverson.net", "https", 0)
 
     If sock = -1 then
         print "Connect() failed. - ";
@@ -132,10 +132,11 @@ Sub CloseTLSDLL
     close #LBSchannelWrapper
 End Sub
 
-Function Connect(host$, srv$)
+Function Connect(host$, srv$, msTimeout)
     CallDLL #LBSchannelWrapper, "Connect",_
     host$ as ptr,_
     srv$ as ptr,_
+    msTimeout as long,_
     Connect as long
 End Function
 
