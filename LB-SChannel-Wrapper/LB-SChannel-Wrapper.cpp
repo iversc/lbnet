@@ -107,7 +107,8 @@ DLL_API SOCKET __stdcall Connect(LPCSTR pHost, LPCSTR pService, ULONG msTimeout)
 
 	if (msTimeout > 0)
 	{
-		tv.tv_usec = msTimeout;
+		tv.tv_sec = msTimeout / 1000;
+		tv.tv_usec = msTimeout % 1000;
 	}
 
 	//Successful call to getaddrinfo().
