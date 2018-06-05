@@ -2,8 +2,10 @@
 
     input "press ENTER to begin.";a
 
+    host$ = "expired.badssl.com"
+
     message1$ = "GET /index.html HTTP/1.1"
-    message2$ = "Host: chrisiverson.net"
+    message2$ = "Host: " + host$
 
 'goto [skipTLS1]
 
@@ -12,7 +14,7 @@
 
     Print hTLS
 
-    CallDLL #LBSchannelWrapper, "BeginTLSClientNoValidation",_
+    CallDLL #LBSchannelWrapper, "BeginTLSClient",_
     hTLS as ulong,_
     ret as long
 
@@ -24,7 +26,7 @@
     'by their service name instead of port number.
 
     'sock = Connect("chrisiverson.net", "80", 0)
-    sock = Connect("chrisiverson.net", "https", 0)
+    sock = Connect(host$, "https", 0)
 
     If sock = -1 then
         print "Connect() failed. - ";
@@ -72,10 +74,15 @@ goto [handshake]
 
     CallDLL #LBSchannelWrapper, "PerformClientHandshake",_
     hTLS as ulong,_
-    "chrisiverson.net" as ptr,_
+    host$ as ptr,_
     ret as long
 
     print "Handshake - ";ret
+
+    if ret <> 0 then
+        Print "Invalid handshake."
+        goto [TLSend]
+    end if
 
     CallDLL #LBSchannelWrapper, "EncryptSend",_
     hTLS as ulong,_

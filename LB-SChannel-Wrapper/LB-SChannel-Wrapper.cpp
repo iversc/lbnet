@@ -302,18 +302,29 @@ DLL_API SECURITY_STATUS __stdcall SetTLSSocket(PTLSCtxtWrapper pWrapper, SOCKET 
 	return SEC_E_OK;
 }
 
-DLL_API SECURITY_STATUS __stdcall BeginTLSClientNoValidation(PTLSCtxtWrapper pWrapper)
+SECURITY_STATUS BeginTLSClientInternal(PTLSCtxtWrapper pWrapper, DWORD dwFlags)
 {
 	if (FAILED(WrapperCheck(pWrapper))) return SEC_E_INVALID_HANDLE;
 
 	pWrapper->pCredHandle = new CredHandle();
 	SCHANNEL_CRED sc = SCHANNEL_CRED();
 	sc.dwVersion = SCHANNEL_CRED_VERSION;
-	sc.dwFlags = SCH_CRED_MANUAL_CRED_VALIDATION | SCH_CRED_NO_DEFAULT_CREDS | SCH_CRED_NO_SERVERNAME_CHECK;
+	sc.dwFlags = dwFlags;
 
 	return AcquireCredentialsHandle(NULL, const_cast<LPSTR>(UNISP_NAME), SECPKG_CRED_OUTBOUND, NULL,
 		&sc, NULL, NULL, pWrapper->pCredHandle, NULL);
+}
+
+DLL_API SECURITY_STATUS __stdcall BeginTLSClientNoValidation(PTLSCtxtWrapper pWrapper)
+{
+	DWORD dwFlags = SCH_CRED_MANUAL_CRED_VALIDATION | SCH_CRED_NO_DEFAULT_CREDS | SCH_CRED_NO_SERVERNAME_CHECK;
+	return BeginTLSClientInternal(pWrapper, dwFlags);
 } 
+
+DLL_API SECURITY_STATUS __stdcall BeginTLSClient(PTLSCtxtWrapper pWrapper)
+{
+	return BeginTLSClientInternal(pWrapper, 0);
+}
 
 SECURITY_STATUS RunHandshakeLoop(PTLSCtxtWrapper pWrapper, BOOL read)
 {

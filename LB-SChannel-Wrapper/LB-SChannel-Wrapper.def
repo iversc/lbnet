@@ -13,3 +13,4 @@ EXPORTS
 	CloseSocket
 	Send
 	Receive
+	BeginTLSClient
