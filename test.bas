@@ -2,7 +2,7 @@
 
     input "press ENTER to begin.";a
 
-    host$ = "expired.badssl.com"
+    host$ = "badssl.com"
 
     message1$ = "GET /index.html HTTP/1.1"
     message2$ = "Host: " + host$
