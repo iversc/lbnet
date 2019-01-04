@@ -2,7 +2,7 @@
 
     input "press ENTER to begin.";a
 
-    host$ = "badssl.com"
+    host$ = "chrisiverson.net"
 
     message1$ = "GET /index.html HTTP/1.1"
     message2$ = "Host: " + host$

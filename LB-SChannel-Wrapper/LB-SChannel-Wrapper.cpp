@@ -331,10 +331,10 @@ SECURITY_STATUS RunHandshakeLoop(PTLSCtxtWrapper pWrapper, BOOL read)
 	if (FAILED(WrapperCheck(pWrapper))) return SEC_E_INVALID_HANDLE;
 
 	SecBufferDesc InputBufDesc, OutputBufDesc;
-	SecBuffer InputBuf[2], OutputBuf[1];
+	SecBuffer InputBuf[2], OutputBuf[2];
 	LPSTR inpBuf = (LPSTR)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, IO_BUFFER_SIZE);
-	int bufCount = 0;
-	int bufSize = IO_BUFFER_SIZE;
+	DWORD bufCount = 0;
+	DWORD bufSize = IO_BUFFER_SIZE;
 	DWORD dwFlagsRet = 0;
 
 	if (inpBuf == NULL)
@@ -393,13 +393,17 @@ SECURITY_STATUS RunHandshakeLoop(PTLSCtxtWrapper pWrapper, BOOL read)
 		InputBuf[1].pvBuffer = NULL;
 		InputBuf[1].cbBuffer = 0;
 
-		OutputBufDesc.cBuffers = 1;
+		OutputBufDesc.cBuffers = 2;
 		OutputBufDesc.pBuffers = OutputBuf;
 		OutputBufDesc.ulVersion = SECBUFFER_VERSION;
 
 		OutputBuf[0].BufferType = SECBUFFER_TOKEN;
 		OutputBuf[0].cbBuffer = 0;
 		OutputBuf[0].pvBuffer = NULL;
+
+		OutputBuf[1].BufferType = SECBUFFER_ALERT;
+		OutputBuf[1].cbBuffer = 0;
+		OutputBuf[1].pvBuffer = NULL;
 
 		scRet = InitializeSecurityContext(pWrapper->pCredHandle, pWrapper->pCtxtHandle, NULL, ISC_REQ_CONFIDENTIALITY |
 			ISC_REQ_ALLOCATE_MEMORY, 0, 0, &InputBufDesc, 0, NULL, &OutputBufDesc, &dwFlagsRet, NULL);
@@ -418,6 +422,11 @@ SECURITY_STATUS RunHandshakeLoop(PTLSCtxtWrapper pWrapper, BOOL read)
 			if (OutputBuf[0].cbBuffer != 0 && OutputBuf[0].pvBuffer != NULL)
 			{
 				int sent = send(pWrapper->sock, (LPCSTR)OutputBuf[0].pvBuffer, OutputBuf[0].cbBuffer, 0);
+				FreeContextBuffer(OutputBuf[0].pvBuffer);
+				if (OutputBuf[1].pvBuffer != NULL)
+				{
+					FreeContextBuffer(OutputBuf[1].pvBuffer);
+				}
 				if(sent == SOCKET_ERROR)
 				{
 					lastError = WSAGetLastError();
@@ -443,7 +452,18 @@ SECURITY_STATUS RunHandshakeLoop(PTLSCtxtWrapper pWrapper, BOOL read)
 						return SEC_E_INTERNAL_ERROR;
 					}
 
-					MoveMemory(pWrapper->ExtraData.pvBuffer, InputBuf[1].pvBuffer,
+#ifdef _DEBUG
+					if (InputBuf[1].pvBuffer == NULL)
+					{
+						WriteDebugLog("InputBuf Extra NULL\r\n");
+					}
+					else
+					{
+						WriteDebugLog("InputBuf Extra NOTNULL\r\n");
+					}
+#endif
+					MoveMemory(pWrapper->ExtraData.pvBuffer, 
+						inpBuf + (bufCount - InputBuf[1].cbBuffer),
 						InputBuf[1].cbBuffer);
 
 					pWrapper->ExtraData.cbBuffer = InputBuf[1].cbBuffer;
@@ -457,8 +477,21 @@ SECURITY_STATUS RunHandshakeLoop(PTLSCtxtWrapper pWrapper, BOOL read)
 						return SEC_E_INTERNAL_ERROR;
 					}
 
+
+#ifdef _DEBUG
+					if (InputBuf[1].pvBuffer == NULL)
+					{
+						WriteDebugLog("InputBuf Extra NULL\r\n");
+					}
+					else
+					{
+						WriteDebugLog("InputBuf Extra NOTNULL\r\n");
+					}
+#endif
+
 					CopyMemory(newBuf, pWrapper->ExtraData.pvBuffer, pWrapper->ExtraData.cbBuffer);
-					CopyMemory((char*)newBuf + pWrapper->ExtraData.cbBuffer, InputBuf[1].pvBuffer, InputBuf[1].cbBuffer);
+					CopyMemory((char*)newBuf + pWrapper->ExtraData.cbBuffer, 
+						inpBuf + (bufCount - InputBuf[1].cbBuffer), InputBuf[1].cbBuffer);
 					HeapFree(GetProcessHeap(),0,pWrapper->ExtraData.pvBuffer);
 					pWrapper->ExtraData.pvBuffer = newBuf;
 
@@ -476,7 +509,18 @@ SECURITY_STATUS RunHandshakeLoop(PTLSCtxtWrapper pWrapper, BOOL read)
 
 		if (InputBuf[1].BufferType == SECBUFFER_EXTRA)
 		{
-			MoveMemory(inpBuf, InputBuf[1].pvBuffer, InputBuf[1].cbBuffer);
+
+#ifdef _DEBUG
+			if (InputBuf[1].pvBuffer == NULL)
+			{
+				WriteDebugLog("InputBuf Extra NULL\r\n");
+			}
+			else
+			{
+				WriteDebugLog("InputBuf Extra NOTNULL\r\n");
+			}
+#endif
+			MoveMemory(inpBuf, inpBuf + (bufCount - InputBuf[1].cbBuffer), InputBuf[1].cbBuffer);
 			bufCount = InputBuf[1].cbBuffer;
 		}
 		else
