@@ -91,7 +91,7 @@ goto [handshake]
     ret as long
 
     If ret < 0 then
-        Print "EncryptSend() failed. - ";GetError()
+        Print "EncryptSend() failed. - ";dechex$(GetError())
         goto [TLSend]
     End if
 
@@ -106,7 +106,7 @@ goto [handshake]
     ret as long
 
     If ret < 0 then
-        print "DecryptReceive() failed. - ";GetError()
+        print "DecryptReceive() failed. - ";dechex$(GetError())
         goto [TLSend]
     end if
 
@@ -156,6 +156,10 @@ End Function
 Function GetError()
     CallDLL #LBSchannelWrapper, "GetError",_
     GetError as long
+
+    if GetError < 0 then
+        GetError = (abs(GetError) XOR hexdec("FFFFFFFF")) + 1
+    end if
 End Function
 
 Function Send(sock, msg$, msgLen)

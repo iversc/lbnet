@@ -405,8 +405,10 @@ SECURITY_STATUS RunHandshakeLoop(PTLSCtxtWrapper pWrapper, BOOL read)
 		OutputBuf[1].cbBuffer = 0;
 		OutputBuf[1].pvBuffer = NULL;
 
-		scRet = InitializeSecurityContext(pWrapper->pCredHandle, pWrapper->pCtxtHandle, NULL, ISC_REQ_CONFIDENTIALITY |
-			ISC_REQ_ALLOCATE_MEMORY, 0, 0, &InputBufDesc, 0, NULL, &OutputBufDesc, &dwFlagsRet, NULL);
+		scRet = InitializeSecurityContext(pWrapper->pCredHandle, pWrapper->pCtxtHandle, NULL, 
+			ISC_REQ_ALLOCATE_MEMORY | ISC_REQ_CONFIDENTIALITY | ISC_REQ_STREAM |
+			ISC_REQ_SEQUENCE_DETECT | ISC_REQ_REPLAY_DETECT | ISC_REQ_EXTENDED_ERROR,
+			0, 0, &InputBufDesc, 0, NULL, &OutputBufDesc, &dwFlagsRet, NULL);
 
 #ifdef _DEBUG
 		WriteDebugLog("InitializeSecurityContext() called.\r\n");
@@ -552,7 +554,9 @@ DLL_API SECURITY_STATUS __stdcall PerformClientHandshake(PTLSCtxtWrapper pWrappe
 	DWORD dwSSPIOutFlags = 0;
 
 	SECURITY_STATUS scRet = InitializeSecurityContext(pWrapper->pCredHandle, NULL, pServerName,
-		ISC_REQ_ALLOCATE_MEMORY | ISC_REQ_CONFIDENTIALITY, 0, 0, NULL, 0, pWrapper->pCtxtHandle, &OutputBufDesc,
+		ISC_REQ_ALLOCATE_MEMORY | ISC_REQ_CONFIDENTIALITY | ISC_REQ_STREAM |
+		ISC_REQ_SEQUENCE_DETECT | ISC_REQ_REPLAY_DETECT | ISC_REQ_EXTENDED_ERROR, 
+		0, 0, NULL, 0, pWrapper->pCtxtHandle, &OutputBufDesc,
 		&dwSSPIOutFlags, NULL);
 
 	if (scRet != SEC_I_CONTINUE_NEEDED) {
@@ -645,7 +649,8 @@ DLL_API int __stdcall EncryptSend(PTLSCtxtWrapper pWrapper, LPCSTR message, ULON
 		return SOCKET_ERROR;
 	}
 
-	int sent = send(pWrapper->sock, (LPSTR)sendBuf, messageSize + sizes->cbHeader + sizes->cbTrailer, 0);
+	int sent = send(pWrapper->sock, (LPSTR)sendBuf, 
+		MsgBuffer[0].cbBuffer + MsgBuffer[1].cbBuffer + MsgBuffer[2].cbBuffer, 0);
 	if (sent == SOCKET_ERROR)
 	{
 		lastError = WSAGetLastError();
