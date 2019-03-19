@@ -14,3 +14,5 @@ EXPORTS
 	Send
 	Receive
 	BeginTLSClient
+	isDataAvailable
+	isTLSDataAvailable

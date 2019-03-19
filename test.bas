@@ -99,6 +99,15 @@ goto [handshake]
     bufLen = 1024
     buf$ = space$(bufLen)
 
+    'callDLL #kernel32, "Sleep", 100 as ulong, ret as void
+
+    CallDLL #LBSchannelWrapper, "isTLSDataAvailable",_
+    hTLS as ulong,_
+    1000 as long,_
+    ret as long
+
+    print ret
+
     CallDLL #LBSchannelWrapper, "DecryptReceive",_
     hTLS as ulong,_
     buf$ as ptr,_

@@ -825,3 +825,50 @@ DLL_API int __stdcall DecryptReceive(PTLSCtxtWrapper pWrapper, LPSTR buffer, ULO
 
 	return retAmount;
 }
+
+DLL_API BOOL __stdcall isDataAvailable(SOCKET sock, int msTimeout)
+{
+	if (sock == INVALID_SOCKET) {
+		lastError = INVALID_SOCKET;
+		return SOCKET_ERROR;
+	}
+	
+	fd_set set;
+	FD_ZERO(&set);
+	FD_SET(sock, &set);
+
+	//Passing in a valid TIMEVAL of time zero means instant, non-blocking return.
+	TIMEVAL tv = { 0,0 };
+
+	if (msTimeout > 0)
+	{
+		tv.tv_sec = msTimeout / 1000;
+		tv.tv_usec = (msTimeout % 1000) * 1000;
+	}
+
+	if (select(0, &set, NULL, NULL, &tv) == SOCKET_ERROR)
+	{
+		lastError = WSAGetLastError();
+		return SOCKET_ERROR;
+	}
+
+	if(FD_ISSET(sock, &set))
+	{
+		lastError = 0;
+		return 1;
+	}
+
+	lastError = 0;
+	return 0;
+}
+
+DLL_API BOOL __stdcall isTLSDataAvailable(PTLSCtxtWrapper pWrapper, int msTimeout)
+{
+	if (FAILED(WrapperCheck(pWrapper)))
+	{
+		lastError = SEC_E_INVALID_HANDLE;
+		return SOCKET_ERROR;
+	}
+
+	return isDataAvailable(pWrapper->sock, msTimeout);
+}
