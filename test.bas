@@ -2,6 +2,94 @@
 
     input "press ENTER to begin.";a
 
+    CallDLL #LBSchannelWrapper, "InitTLS",_
+    hTLS as ulong
+    
+    CallDLL #LBSchannelWrapper, "CreateListenSocket",_
+    "27015" as ptr,_
+    socket as long
+
+    if socket = -1 then
+        print "CreateListenSocket() failed."
+        print "Error code: ";GetError()
+        goto [end]
+    end if
+
+    print "Waiting for connection..."
+    timer 1000, [checkConnection]
+    wait
+
+    [checkConnection]
+    timer 0
+
+
+    CallDLL #LBSchannelWrapper, "IsReadAvailable",_
+    socket as long,_
+    ret as long
+
+    print ret
+
+    if ret = 0 then
+        timer 1000, [checkConnection]
+        wait
+    end if
+
+    print "Accepting connection..."
+    CallDLL #LBSchannelWrapper, "AcceptConnection",_
+    socket as long,_
+    client as long
+
+    If client = -1 then
+        print "AcceptConnection() failed."
+        print "Error code: ";GetError()
+        a = CloseSocket(socket)
+        goto [end]
+    end if
+
+    timer 1000, [waitForData]
+    wait
+
+    [waitForData]
+    timer 0
+
+    CallDLL #LBSchannelWrapper, "IsReadAvailable",_
+    client as long,_
+    ret as long
+
+    If ret = 0 then
+        timer 1000, [waitForData]
+        wait
+    end if
+
+    bufLen = 1024
+    buf$ = space$(bufLen)
+    a = Receive(client, buf$, bufLen)
+
+    buf$ = left$(buf$, a)
+    print "Data from client: ";buf$
+    if left$(buf$, 3) = "END" then
+        print "Closing server."
+        a = CloseSocket(client)
+        a = CloseSocket(socket)
+        goto [end]
+    end if
+
+    if left$(buf$, 4) = "NEXT" then
+        print "Waiting for next client."
+        a = CloseSocket(client)
+        goto [checkConnection]
+    end if
+
+    sendBuf$ = "serverdata" + chr$(13) + chr$(10)
+    sendLen = len(sendBuf$)
+
+    a = Send(client, sendBuf$, sendLen)
+    timer 1000, [waitForData]
+    wait
+
+goto [end]
+
+
     host$ = "chrisiverson.net"
 
     message1$ = "GET /index.html HTTP/1.1"
@@ -101,7 +189,7 @@ goto [handshake]
 
     'callDLL #kernel32, "Sleep", 100 as ulong, ret as void
 
-    CallDLL #LBSchannelWrapper, "isTLSDataAvailable",_
+    CallDLL #LBSchannelWrapper, "IsTLSReadAvailable",_
     hTLS as ulong,_
     1000 as long,_
     ret as long
@@ -135,6 +223,10 @@ goto [handshake]
     ret = CloseSocket(sock)
 
     [end]
+    CallDLL #LBSchannelWrapper, "EndTLS",_
+    hTLS as ulong,_
+    ret as long
+    
     call CloseTLSDLL
 
 '====================

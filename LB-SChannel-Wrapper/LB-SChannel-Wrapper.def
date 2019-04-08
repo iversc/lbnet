@@ -14,5 +14,7 @@ EXPORTS
 	Send
 	Receive
 	BeginTLSClient
-	isDataAvailable
-	isTLSDataAvailable
+	IsReadAvailable
+	IsTLSReadAvailable
+	CreateListenSocket
+	AcceptConnection
