@@ -9,7 +9,7 @@ SECURITY_STATUS WrapperCheck(PTLSCtxtWrapper pWrapper)
 	return SEC_E_OK;
 }
 
-DLL_API PTLSCtxtWrapper __stdcall InitTLS()
+DLL_API PTLSCtxtWrapper __stdcall CreateTLSContext()
 {
 	PTLSCtxtWrapper pWrapper = new TLSCtxtWrapper();
 	pWrapper->WrapperVersion = TLS_Wrapper_Version;
@@ -23,7 +23,7 @@ DLL_API PTLSCtxtWrapper __stdcall InitTLS()
 }
 
 
-DLL_API SECURITY_STATUS __stdcall EndTLS(PTLSCtxtWrapper pWrapper)
+DLL_API SECURITY_STATUS __stdcall DestroyTLSContext(PTLSCtxtWrapper pWrapper)
 {
 	if (FAILED(WrapperCheck(pWrapper))) return SEC_E_INVALID_HANDLE;
 

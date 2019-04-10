@@ -7,10 +7,13 @@
 #include <schnlsp.h>
 #include <WinSock2.h>
 #include <WS2tcpip.h>
+#include <iphlpapi.h>
+#include <IcmpAPI.h>
 #include "LB-SChannel-Wrapper.h"
 
 #pragma comment(lib, "Secur32.lib")
 #pragma comment(lib, "Ws2_32.lib")
+#pragma comment(lib, "iphlpapi.lib")
 
 WSADATA wsaData;
 ULONG lastError = 0;
@@ -36,6 +39,20 @@ DLL_API ULONG __stdcall GetError()
 	return lastError;
 }
 
+DLL_API int __stdcall InitSockets()
+{
+	//Initialize Winsock.
+	lastError = WSAStartup(MAKEWORD(2, 2), &wsaData);
+	return lastError;
+}
+
+DLL_API int __stdcall EndSockets()
+{
+	int iResult = WSACleanup();
+	lastError = WSAGetLastError();
+	return iResult;
+}
+
 DLL_API SOCKET __stdcall CreateListenSocket(LPCSTR pService)
 {
 	int boundFlag = 0;
@@ -43,15 +60,6 @@ DLL_API SOCKET __stdcall CreateListenSocket(LPCSTR pService)
 	if (pService == NULL)
 	{
 		lastError = ERROR_INVALID_PARAMETER;
-		return INVALID_SOCKET;
-	}
-
-	//Initialize Winsock.
-	int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
-	if (iResult != 0)
-	{
-		//Winsock init failed.
-		lastError = iResult;
 		return INVALID_SOCKET;
 	}
 
@@ -75,7 +83,6 @@ DLL_API SOCKET __stdcall CreateListenSocket(LPCSTR pService)
 	{
 		//getaddrinfo() failed.
 		lastError = dwResult;
-		WSACleanup();
 		return INVALID_SOCKET;
 	}
 
@@ -92,7 +99,6 @@ DLL_API SOCKET __stdcall CreateListenSocket(LPCSTR pService)
 			{
 				lastError = WSAGetLastError();
 				freeaddrinfo(result);
-				WSACleanup();
 				return INVALID_SOCKET;
 			}
 		}
@@ -108,7 +114,6 @@ DLL_API SOCKET __stdcall CreateListenSocket(LPCSTR pService)
 	if (boundFlag = 0)
 	{
 		closesocket(s);
-		WSACleanup();
 		return INVALID_SOCKET;
 	}
 
@@ -120,7 +125,6 @@ DLL_API SOCKET __stdcall CreateListenSocket(LPCSTR pService)
 	{
 		lastError = WSAGetLastError();
 		closesocket(s);
-		WSACleanup();
 		return INVALID_SOCKET;
 	}
 
@@ -181,7 +185,6 @@ DLL_API SOCKET __stdcall Connect(LPCSTR pHost, LPCSTR pService, ULONG msTimeout)
 	{
 		//getaddrinfo() failed.
 		lastError = dwResult;
-		WSACleanup();
 		return INVALID_SOCKET;
 	}
 
@@ -208,7 +211,6 @@ DLL_API SOCKET __stdcall Connect(LPCSTR pHost, LPCSTR pService, ULONG msTimeout)
 			{
 				lastError = WSAGetLastError();
 				freeaddrinfo(result);
-				WSACleanup();
 				return INVALID_SOCKET;
 			}
 		}
@@ -223,7 +225,6 @@ DLL_API SOCKET __stdcall Connect(LPCSTR pHost, LPCSTR pService, ULONG msTimeout)
 				lastError = WSAGetLastError();
 				freeaddrinfo(result);
 				closesocket(s);
-				WSACleanup();
 				return INVALID_SOCKET;
 			}
 		}
@@ -288,7 +289,6 @@ DLL_API SOCKET __stdcall Connect(LPCSTR pHost, LPCSTR pService, ULONG msTimeout)
 	//Free memory returned from getaddrinfo() once we don't need it anymore.
 	freeaddrinfo(result);
 	closesocket(s);
-	WSACleanup();
 	return INVALID_SOCKET;
 }
 
@@ -321,10 +321,7 @@ DLL_API BOOL __stdcall IsSocketInvalid(SOCKET sock)
 
 DLL_API ULONG __stdcall CloseSocket(SOCKET sock)
 {
-	int retVal = closesocket(sock);
-	WSACleanup();
-
-	return retVal;
+	return closesocket(sock);
 }
 
 
@@ -364,3 +361,143 @@ DLL_API BOOL __stdcall IsReadAvailable(SOCKET sock, int msTimeout)
 	return 0;
 }
 
+DLL_API int __stdcall PingHost(LPCSTR host, int * status, int * msReply, int msTimeout)
+{
+	if (host == NULL || status == NULL || msReply == NULL)
+	{
+		lastError = ERROR_INVALID_PARAMETER;
+		return INVALID_SOCKET;
+	}
+
+	addrinfo hints = addrinfo();
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_protocol = IPPROTO_TCP;
+
+	addrinfo * result = NULL;
+	addrinfo * ptr = NULL;
+
+	//Attempt to auto-build a SOCKADDR structure, whether it's IPv4 or IPv6
+	DWORD dwResult = getaddrinfo(host, "80", &hints, &result);
+	if (dwResult != 0)
+	{
+		//getaddrinfo() failed.
+		lastError = dwResult;
+		return INVALID_SOCKET;
+	}
+
+	if (result == NULL) {
+		return INVALID_SOCKET;
+	}
+
+	//If we have an IPv4 result, use IcmpSendEcho().
+	if (result->ai_family == AF_INET)
+	{
+		//Convert the generic sockaddr structure from the returned info
+		//to an IPv4-specific one
+		PSOCKADDR_IN addr = reinterpret_cast<PSOCKADDR_IN>(result->ai_addr);
+		
+		HANDLE icmp = IcmpCreateFile();
+		if (icmp == INVALID_HANDLE_VALUE)
+		{
+			freeaddrinfo(result);
+			return INVALID_SOCKET;
+		}
+
+		// Create request data to use
+		LPCSTR requestData = "RandomData";
+		int requestDataSize = strnlen_s(requestData, sizeof requestData);
+
+
+		// Calculate response buffer size.
+		//
+		// Documented as needing to be the size of one ICMP_ECHO_REPLY structure,
+		// plus the size of the request data, PLUS 8 extra bytes to cover ICMP errors.
+		int responseBufSize = sizeof(ICMP_ECHO_REPLY) + requestDataSize + 8;
+
+		// Create response buffer.
+		PVOID responseBuf = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, responseBufSize);
+
+		if (IcmpSendEcho(icmp, addr->sin_addr.S_un.S_addr, (LPVOID)requestData, requestDataSize, NULL,
+			responseBuf, responseBufSize, msTimeout) == 0)
+		{
+			freeaddrinfo(result);
+			HeapFree(GetProcessHeap(), 0, responseBuf);
+			IcmpCloseHandle(icmp);
+			lastError = GetLastError();
+			return INVALID_SOCKET;
+		}
+
+		PICMP_ECHO_REPLY rep = (PICMP_ECHO_REPLY)responseBuf;
+		*status = rep->Status;
+		*msReply = rep->RoundTripTime;
+
+		HeapFree(GetProcessHeap(), 0, responseBuf);
+		freeaddrinfo(result);
+		IcmpCloseHandle(icmp);
+		return 0;
+	}
+	else if (result->ai_family == AF_INET6)
+	{
+		//Convert the generic sockaddr structure from the returned info
+		//to an IPv6-specific one
+		PSOCKADDR_IN6 addr = reinterpret_cast<PSOCKADDR_IN6>(result->ai_addr);
+
+		HANDLE icmp = Icmp6CreateFile();
+		if (icmp == INVALID_HANDLE_VALUE)
+		{
+			freeaddrinfo(result);
+			return INVALID_SOCKET;
+		}
+
+		sockaddr_in6 saSource;
+		saSource.sin6_family = AF_INET6;
+		saSource.sin6_addr = in6addr_any;
+		saSource.sin6_flowinfo = 0;
+		saSource.sin6_port = 0;
+
+		// Create request data to use
+		LPCSTR requestData = "RandomData";
+		int requestDataSize = strnlen_s(requestData, sizeof requestData);
+
+
+		// Calculate response buffer size.
+		//
+		// Documented as needing to be the size of one ICMPV6_ECHO_REPLY structure,
+		// plus the size of the request data, PLUS 8 extra bytes to cover ICMP errors
+		int responseBufSize = sizeof(ICMPV6_ECHO_REPLY) + requestDataSize + 8;
+
+		// Create response buffer.
+		PVOID responseBuf = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, responseBufSize);
+
+		if (Icmp6SendEcho2(icmp, NULL, NULL, NULL, &saSource, addr, (LPVOID)requestData,
+			requestDataSize, NULL, responseBuf, responseBufSize, msTimeout) == 0)
+		{
+			freeaddrinfo(result);
+			HeapFree(GetProcessHeap(), 0, responseBuf);
+			IcmpCloseHandle(icmp);
+			lastError = GetLastError();
+			return INVALID_SOCKET;
+		}
+
+		if (Icmp6ParseReplies(responseBuf, responseBufSize) == 0)
+		{
+			freeaddrinfo(result);
+			HeapFree(GetProcessHeap(), 0, responseBuf);
+			IcmpCloseHandle(icmp);
+			lastError = GetLastError();
+			return INVALID_SOCKET;
+		}
+
+		PICMPV6_ECHO_REPLY rep = (PICMPV6_ECHO_REPLY)responseBuf;
+		*status = rep->Status;
+		*msReply = rep->RoundTripTime;
+
+		HeapFree(GetProcessHeap(), 0, responseBuf);
+		freeaddrinfo(result);
+		IcmpCloseHandle(icmp);
+		return 0;
+	}
+    
+	return INVALID_SOCKET;
+}
