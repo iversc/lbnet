@@ -9,6 +9,7 @@
 #include <WS2tcpip.h>
 #include <iphlpapi.h>
 #include <IcmpAPI.h>
+#include <stdlib.h>
 #include "LB-SChannel-Wrapper.h"
 
 #pragma comment(lib, "Secur32.lib")
@@ -361,9 +362,9 @@ DLL_API BOOL __stdcall IsReadAvailable(SOCKET sock, int msTimeout)
 	return 0;
 }
 
-DLL_API int __stdcall PingHost(LPCSTR host, int * status, int * msReply, int msTimeout)
+DLL_API int __stdcall PingHost(LPCSTR host, int PktSize, int * status, int * msReply, int msTimeout)
 {
-	if (host == NULL || status == NULL || msReply == NULL)
+	if (host == NULL || status == NULL || msReply == NULL || PktSize == NULL)
 	{
 		lastError = ERROR_INVALID_PARAMETER;
 		return INVALID_SOCKET;
@@ -405,22 +406,27 @@ DLL_API int __stdcall PingHost(LPCSTR host, int * status, int * msReply, int msT
 		}
 
 		// Create request data to use
-		LPCSTR requestData = "RandomData";
-		int requestDataSize = strnlen_s(requestData, sizeof requestData);
+		int n;
+		char * requestData;
 
+		requestData = (char*)malloc(PktSize);
+		
+		for (n = 0; n < PktSize; n++)
+			requestData[n] = rand() % 26 + 'a';
 
 		// Calculate response buffer size.
 		//
 		// Documented as needing to be the size of one ICMP_ECHO_REPLY structure,
 		// plus the size of the request data, PLUS 8 extra bytes to cover ICMP errors.
-		int responseBufSize = sizeof(ICMP_ECHO_REPLY) + requestDataSize + 8;
+		int responseBufSize = sizeof(ICMP_ECHO_REPLY) + PktSize + 8;
 
 		// Create response buffer.
 		PVOID responseBuf = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, responseBufSize);
 
-		if (IcmpSendEcho(icmp, addr->sin_addr.S_un.S_addr, (LPVOID)requestData, requestDataSize, NULL,
+		if (IcmpSendEcho(icmp, addr->sin_addr.S_un.S_addr, (LPVOID)requestData, PktSize, NULL,
 			responseBuf, responseBufSize, msTimeout) == 0)
 		{
+			free(requestData);
 			freeaddrinfo(result);
 			HeapFree(GetProcessHeap(), 0, responseBuf);
 			IcmpCloseHandle(icmp);
@@ -432,6 +438,7 @@ DLL_API int __stdcall PingHost(LPCSTR host, int * status, int * msReply, int msT
 		*status = rep->Status;
 		*msReply = rep->RoundTripTime;
 
+		free(requestData);
 		HeapFree(GetProcessHeap(), 0, responseBuf);
 		freeaddrinfo(result);
 		IcmpCloseHandle(icmp);
@@ -457,22 +464,27 @@ DLL_API int __stdcall PingHost(LPCSTR host, int * status, int * msReply, int msT
 		saSource.sin6_port = 0;
 
 		// Create request data to use
-		LPCSTR requestData = "RandomData";
-		int requestDataSize = strnlen_s(requestData, sizeof requestData);
+		int n;
+		char * requestData;
 
+		requestData = (char*)malloc(PktSize);
+
+		for (n = 0; n < PktSize; n++)
+			requestData[n] = rand() % 26 + 'a';
 
 		// Calculate response buffer size.
 		//
 		// Documented as needing to be the size of one ICMPV6_ECHO_REPLY structure,
 		// plus the size of the request data, PLUS 8 extra bytes to cover ICMP errors
-		int responseBufSize = sizeof(ICMPV6_ECHO_REPLY) + requestDataSize + 8;
+		int responseBufSize = sizeof(ICMPV6_ECHO_REPLY) + PktSize + 8;
 
 		// Create response buffer.
 		PVOID responseBuf = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, responseBufSize);
 
 		if (Icmp6SendEcho2(icmp, NULL, NULL, NULL, &saSource, addr, (LPVOID)requestData,
-			requestDataSize, NULL, responseBuf, responseBufSize, msTimeout) == 0)
+			PktSize, NULL, responseBuf, responseBufSize, msTimeout) == 0)
 		{
+			free(requestData);
 			freeaddrinfo(result);
 			HeapFree(GetProcessHeap(), 0, responseBuf);
 			IcmpCloseHandle(icmp);
@@ -482,6 +494,7 @@ DLL_API int __stdcall PingHost(LPCSTR host, int * status, int * msReply, int msT
 
 		if (Icmp6ParseReplies(responseBuf, responseBufSize) == 0)
 		{
+			free(requestData);
 			freeaddrinfo(result);
 			HeapFree(GetProcessHeap(), 0, responseBuf);
 			IcmpCloseHandle(icmp);
@@ -493,6 +506,7 @@ DLL_API int __stdcall PingHost(LPCSTR host, int * status, int * msReply, int msT
 		*status = rep->Status;
 		*msReply = rep->RoundTripTime;
 
+		free(requestData);
 		HeapFree(GetProcessHeap(), 0, responseBuf);
 		freeaddrinfo(result);
 		IcmpCloseHandle(icmp);
