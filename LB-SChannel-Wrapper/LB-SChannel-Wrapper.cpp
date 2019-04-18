@@ -78,7 +78,7 @@ DLL_API SOCKET __stdcall CreateListenSocket(LPCSTR pService)
 	addrinfo * result = NULL;
 	addrinfo * ptr = NULL;
 
-	DWORD dwResult = getaddrinfo(NULL, pService, &hints, &result);
+	DWORD dwResult = getaddrinfo("", pService, &hints, &result);
 	if (dwResult != 0)
 	{
 		//getaddrinfo() failed.
@@ -105,9 +105,7 @@ DLL_API SOCKET __stdcall CreateListenSocket(LPCSTR pService)
 
 		if (bind(s, ptr->ai_addr, ptr->ai_addrlen) != SOCKET_ERROR)
 		{
-			freeaddrinfo(result);
 			boundFlag = 1;
-			break;
 		}
 	}
 
@@ -116,6 +114,8 @@ DLL_API SOCKET __stdcall CreateListenSocket(LPCSTR pService)
 		closesocket(s);
 		return INVALID_SOCKET;
 	}
+
+	freeaddrinfo(result);
 
 #ifdef _DEBUG
 	WriteDebugLog("Socket bound, now listening...\r\n");
