@@ -14,11 +14,6 @@ DLL_API PTLSCtxtWrapper __stdcall CreateTLSContext()
 	PTLSCtxtWrapper pWrapper = new TLSCtxtWrapper();
 	pWrapper->WrapperVersion = TLS_Wrapper_Version;
 
-#ifdef _DEBUG
-	debugFile = CreateFile("wrapperdebug.log", GENERIC_ALL, FILE_SHARE_READ, NULL,
-		OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-#endif
-
 	return pWrapper;
 }
 
@@ -48,14 +43,6 @@ DLL_API SECURITY_STATUS __stdcall DestroyTLSContext(PTLSCtxtWrapper pWrapper)
 	}
 
 	delete pWrapper;
-
-#ifdef _DEBUG
-	if (debugFile != INVALID_HANDLE_VALUE)
-	{
-		CloseHandle(debugFile);
-		debugFile = INVALID_HANDLE_VALUE;
-	}
-#endif
 
 	return SEC_E_OK;
 }

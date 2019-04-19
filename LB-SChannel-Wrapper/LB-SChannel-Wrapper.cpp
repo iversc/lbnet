@@ -26,11 +26,16 @@ HANDLE debugFile = INVALID_HANDLE_VALUE;
 #ifdef _DEBUG
 void WriteDebugLog(LPCSTR message)
 {
+	debugFile = CreateFile("wrapperdebug.log", FILE_APPEND_DATA, FILE_SHARE_READ, NULL,
+		OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+
 	if (debugFile != INVALID_HANDLE_VALUE)
 	{
 		DWORD msgLen = strlen(message);
 		DWORD written = 0;
 		WriteFile(debugFile, message, msgLen, &written, NULL);
+		CloseHandle(debugFile);
+		debugFile = INVALID_HANDLE_VALUE;
 	}
 }
 #endif
@@ -75,11 +80,12 @@ DLL_API SOCKET __stdcall CreateListenSocket(LPCSTR pService)
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
+	hints.ai_flags = AI_PASSIVE;
 
 	addrinfo * result = NULL;
 	addrinfo * ptr = NULL;
 
-	DWORD dwResult = getaddrinfo("", pService, &hints, &result);
+	DWORD dwResult = getaddrinfo(NULL, pService, &hints, &result);
 	if (dwResult != 0)
 	{
 		//getaddrinfo() failed.
@@ -108,6 +114,24 @@ DLL_API SOCKET __stdcall CreateListenSocket(LPCSTR pService)
 		{
 			boundFlag = 1;
 		}
+		else
+		{
+#ifdef _DEBUG
+			char str[INET6_ADDRSTRLEN];
+			if (ptr->ai_family == AF_INET)
+			{
+				inet_ntop(AF_INET, &((PSOCKADDR_IN)ptr->ai_addr)->sin_addr, str, INET_ADDRSTRLEN);
+			}
+			else
+			{
+				inet_ntop(AF_INET6, &((PSOCKADDR_IN6)ptr->ai_addr)->sin6_addr, str, INET6_ADDRSTRLEN);
+			}
+
+			WriteDebugLog("bind() call failed. - ");
+			WriteDebugLog(str);
+			WriteDebugLog("\r\n");
+#endif
+		}
 	}
 
 	if (boundFlag = 0)
@@ -117,10 +141,6 @@ DLL_API SOCKET __stdcall CreateListenSocket(LPCSTR pService)
 	}
 
 	freeaddrinfo(result);
-
-#ifdef _DEBUG
-	WriteDebugLog("Socket bound, now listening...\r\n");
-#endif
 
 	if (listen(s, SOMAXCONN) == SOCKET_ERROR)
 	{

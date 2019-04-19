@@ -75,14 +75,19 @@
         goto [bufLoop]
     end if
 
-    cmd$ = left$(cmdBuf$, lineComplete)
+    cmd$ = left$(cmdBuf$, lineComplete - 1)
     Print "< ";cmd$
 
     if cmd$ = "END" then
-        dataSend$ = "END RECEIVED, CLOSING CONNECTION." + chr$(13) + chr$(10)
+        dataSend$ = "END RECEIVED, TERMINATING SERVER." + chr$(13) + chr$(10)
     else
-        dataSend$ = "DATA " + str$(randNum(1, 100)) + chr$(13) + chr$(10)
+        if cmd$ = "CLOSE" then
+            dataSend$ = "CLOSE RECEIVED, CLOSING CONNECTION AND ACCEPTING NEW ONE." + chr$(13) + chr$(10)
+        else
+            dataSend$ = "DATA " + str$(randNum(1, 100)) + chr$(13) + chr$(10)
+        end if
     end if
+
 
     print "> ";dataSend$
     sendLen = len(dataSend$)
@@ -93,11 +98,14 @@
         goto [awaitLoop]
     end if
 
-    if trim$(cmd$) = "END" then
+    dataSend$ = ""
+
+    if cmd$ = "END" or cmd$ = "CLOSE" then
         a = CloseSocket(hConn)
         cmdBuf$ = ""
         leftOver$ = ""
-        goto [doSockEnd]
+        if cmd$ = "END" then [doSockEnd]
+        goto [awaitLoop]
     end if
 
     cmdBuf$ = right$(cmdBuf$, len(cmdBuf$) - lineComplete - 2)
