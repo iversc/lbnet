@@ -21,3 +21,4 @@ EXPORTS
 	InitSockets
 	EndSockets
 	PingHost
+	DisconnectFromServer

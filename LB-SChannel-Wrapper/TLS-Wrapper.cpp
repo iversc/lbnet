@@ -80,6 +80,63 @@ DLL_API SECURITY_STATUS __stdcall BeginTLSClient(PTLSCtxtWrapper pWrapper)
 	return BeginTLSClientInternal(pWrapper, 0);
 }
 
+DLL_API SECURITY_STATUS __stdcall DisconnectFromServer(PTLSCtxtWrapper pWrapper)
+{
+	if (FAILED(WrapperCheck(pWrapper))) return SEC_E_INVALID_HANDLE;
+
+	SecBufferDesc OutputBufDesc;
+	SecBuffer OutputBuf[1];
+	DWORD dwType, dwSSPIFlags, dwFlagsRet;
+	TimeStamp expiration;
+
+	SECURITY_STATUS scRet;
+
+	dwType = SCHANNEL_SHUTDOWN;
+
+	OutputBuf[0].pvBuffer = &dwType;
+	OutputBuf[0].BufferType = SECBUFFER_TOKEN;
+	OutputBuf[0].cbBuffer = sizeof(dwType);
+
+	OutputBufDesc.cBuffers = 1;
+	OutputBufDesc.pBuffers = OutputBuf;
+	OutputBufDesc.ulVersion = SECBUFFER_VERSION;
+
+	scRet = ApplyControlToken(pWrapper->pCtxtHandle, &OutputBufDesc);
+	if (FAILED(scRet))
+	{
+		goto DFScleanup;
+	}
+
+	dwSSPIFlags = ISC_REQ_SEQUENCE_DETECT | ISC_REQ_REPLAY_DETECT | ISC_REQ_CONFIDENTIALITY |
+		ISC_RET_EXTENDED_ERROR | ISC_REQ_ALLOCATE_MEMORY | ISC_REQ_STREAM;
+
+	scRet = InitializeSecurityContext(pWrapper->pCredHandle, pWrapper->pCtxtHandle, NULL,
+		dwSSPIFlags, 0, SECURITY_NATIVE_DREP, NULL, 0, pWrapper->pCtxtHandle, &OutputBufDesc,
+		&dwFlagsRet, &expiration);
+
+	if (FAILED(scRet))
+	{
+		goto DFScleanup;
+	}
+
+	if (OutputBuf[0].pvBuffer != NULL & OutputBuf[0].cbBuffer != 0)
+	{
+		int numSent = send(pWrapper->sock, (LPCSTR)OutputBuf[0].pvBuffer, OutputBuf[0].cbBuffer, 0);
+		if (numSent == SOCKET_ERROR || numSent == 0)
+		{
+			scRet = WSAGetLastError();
+			goto DFScleanup;
+		}
+
+		FreeContextBuffer(OutputBuf[0].pvBuffer);
+	}
+
+DFScleanup:
+	DeleteSecurityContext(pWrapper->pCtxtHandle);
+	delete pWrapper->pCtxtHandle;
+	return scRet;
+}
+
 SECURITY_STATUS RunHandshakeLoop(PTLSCtxtWrapper pWrapper, BOOL read)
 {
 	if (FAILED(WrapperCheck(pWrapper))) return SEC_E_INVALID_HANDLE;
