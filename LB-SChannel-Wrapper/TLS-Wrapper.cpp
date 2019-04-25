@@ -42,6 +42,11 @@ DLL_API SECURITY_STATUS __stdcall DestroyTLSContext(PTLSCtxtWrapper pWrapper)
 		HeapFree(GetProcessHeap(), 0, pWrapper->RemainingDecryptData.pvBuffer);
 	}
 
+	if (pWrapper->pCertContext != NULL)
+	{
+		CertFreeCertificateContext(pWrapper->pCertContext);
+	}
+
 	delete pWrapper;
 
 	return SEC_E_OK;
@@ -66,6 +71,52 @@ SECURITY_STATUS BeginTLSClientInternal(PTLSCtxtWrapper pWrapper, DWORD dwFlags)
 	sc.dwFlags = dwFlags;
 
 	return AcquireCredentialsHandle(NULL, const_cast<LPSTR>(UNISP_NAME), SECPKG_CRED_OUTBOUND, NULL,
+		&sc, NULL, NULL, pWrapper->pCredHandle, NULL);
+}
+
+PCCERT_CONTEXT getServerCertificate()
+{
+	HCERTSTORE hStore = NULL;
+	PCCERT_CONTEXT pCertContext = NULL;
+
+	hStore = CertOpenStore(CERT_STORE_PROV_SYSTEM, X509_ASN_ENCODING, NULL,
+		CERT_SYSTEM_STORE_LOCAL_MACHINE, L"MY");
+
+	if (hStore == NULL)
+	{
+		lastError = SEC_E_INCOMPLETE_CREDENTIALS;
+		return NULL;
+	}
+
+	pCertContext = CertFindCertificateInStore(hStore, X509_ASN_ENCODING,
+		0, CERT_FIND_SUBJECT_STR_A, "localhost", NULL);
+
+	CertCloseStore(hStore, 0);
+	return pCertContext;
+}
+
+DLL_API SECURITY_STATUS BeginTLSServer(PTLSCtxtWrapper pWrapper)
+{
+	if (FAILED(WrapperCheck(pWrapper))) return SEC_E_INVALID_HANDLE;
+
+	pWrapper->pCredHandle = new CredHandle();
+	SCHANNEL_CRED sc = SCHANNEL_CRED();
+	sc.dwVersion = SCHANNEL_CRED_VERSION;
+
+	PCCERT_CONTEXT serverCert;
+
+	serverCert = getServerCertificate();
+
+	if (serverCert == NULL)
+	{
+		return SEC_E_INTERNAL_ERROR;
+	}
+
+	sc.paCred = &serverCert;
+
+	pWrapper->pCertContext = serverCert;
+
+	return AcquireCredentialsHandle(NULL, const_cast<LPSTR>(UNISP_NAME), SECPKG_CRED_INBOUND, NULL,
 		&sc, NULL, NULL, pWrapper->pCredHandle, NULL);
 }
 
