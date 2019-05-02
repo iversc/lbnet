@@ -124,6 +124,7 @@ DLL_API SECURITY_STATUS BeginTLSServer(PTLSCtxtWrapper pWrapper)
 	}
 
 	sc.paCred = &serverCert;
+	sc.cCreds = 1;
 
 	pWrapper->pCertContext = serverCert;
 
