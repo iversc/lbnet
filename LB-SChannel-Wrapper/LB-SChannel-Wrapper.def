@@ -21,4 +21,6 @@ EXPORTS
 	InitSockets
 	EndSockets
 	PingHost
-	DisconnectFromServer
+	EndTLSClientSession
+	BeginTLSServer
+	PerformServerHandshake

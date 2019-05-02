@@ -32,37 +32,63 @@
         goto [doSockEnd]
     end if
 
+    print "Creating TLS context..."
+    hTLS = CreateTLSContext()
+
+    print "Acquiring TLS credentials..."
+    ret = BeginTLSServer(hTLS)
+    if ret <> 0 then
+        print "BeginTLSServer() failed. ret - ";ret;" -- Error - ";GetError()
+        a = DestroyTLSContext(hTLS)
+        goto [doSockEnd]
+    end if
+
     Print "Finishing connection..."
 
-[bufLoop]
+[handshakeLoop]
     timer 0
     ret = IsReadAvailable(hConn, 0)
     if ret = 0 then
         'No data available this time.  Wait.
-        timer 1000, [bufLoop]
+        timer 1000, [handshakeLoop]
         wait
     end if
 
     if ret = -1 then
         Print "IsReadAvailable() failed. - ";GetError()
         a = CloseSocket(hConn)
+        a = DestroyTLSContext(hTLS)
         goto [awaitLoop]
+    end if
+
+    a = SetTLSSocket(hTLS, hConn)
+
+    ret = PerformServerHandshake(hTLS, 1, "", 0)
+    if ret <> 0 then
+        print "PerformServerHandshake() failed. - ";ret; " - Error: ";dechex$(GetError())
+        a = CloseSocket(hConn)
+        a = DestroyTLSContext(hTLS)
+        goto [doSockEnd]
+    end if
+
+[bufLoop]
+    timer 0
+    ret = IsReadAvailable(hConn, 0)
+    if ret = 0 then
+        'No data waiting.  Stop and wait.
+        timer 1000, [bufLoop]
+        wait
     end if
 
     bufLen = 512
     buf$ = space$(bufLen)
-    num = Receive(hConn, buf$, bufLen)
+    num = DecryptReceive(hTLS, buf$, bufLen)
     If num = -1 then
         Print "Socket error occurred. - ";GetError()
         a = CloseSocket(hConn)
+        a = DestroyTLSContext(hTLS)
         goto [awaitLoop]
     End if
-
-    If num = 0 then
-        Print "Connection closed by remote host."
-        a = CloseSocket(hConn)
-        goto [awaitLoop]
-    End If
 
     crlf$ = chr$(13) + chr$(10)
 
@@ -91,10 +117,11 @@
 
     print "> ";dataSend$
     sendLen = len(dataSend$)
-    ret = Send(hConn, dataSend$, sendLen)
+    ret = EncryptSend(hTLS, dataSend$, sendLen)
     if ret = -1 then
         print "Socket error occurred when sending data. - ";GetError()
         a = CloseSocket(hConn)
+        a = DestroyTLSContext(hTLS)
         goto [awaitLoop]
     end if
 
@@ -102,6 +129,7 @@
 
     if cmd$ = "END" or cmd$ = "CLOSE" then
         a = CloseSocket(hConn)
+        a = DestroyTLSContext(hTLS)
         cmdBuf$ = ""
         leftOver$ = ""
         if cmd$ = "END" then [doSockEnd]
@@ -145,10 +173,42 @@ Function EndSockets()
     EndSockets as long
 End Function
 
+Function CreateTLSContext()
+    CallDLL #LBSchannelWrapper, "CreateTLSContext",_
+    CreateTLSContext as ulong
+End Function
+
+Function DestroyTLSContext(hTLS)
+    CallDLL #LBSchannelWrapper, "DestroyTLSContext",_
+    DestroyTLSContext as long
+End Function
+
 Function IsSocketInvalid(sock)
     CallDLL #LBSchannelWrapper, "IsSocketInvalid",_
     sock as ulong,_
     IsSocketInvalid as long
+End Function
+
+Function BeginTLSServer(hTLS)
+    CallDLL #LBSchannelWrapper, "BeginTLSServer",_
+    hTLS as ulong,_
+    BeginTLSServer as long
+End Function
+
+Function SetTLSSocket(hTLS, sock)
+    CallDLL #LBSchannelWrapper, "SetTLSSocket",_
+    hTLS as ulong,_
+    sock as long,_
+    SetTLSSock as long
+End Function
+
+Function PerformServerHandshake(hTLS, doInitialRead, initBuf$, initBufSize)
+    CallDLL #LBSchannelWrapper, "PerformServerHandshake",_
+    hTLS as ulong,_
+    doInitialRead as long,_
+    initBuf$ as ptr,_
+    initBufSize as long,_
+    PerformServerHandshake as long
 End Function
 
 Function CreateListenSocket(pService$)
@@ -219,10 +279,26 @@ Function Send(sock, msg$, msgLen)
     Send as long
 End Function
 
+Function EncryptSend(hTLS, msg$, msgLen)
+    CallDLL #LBSchannelWrapper, "EncryptSend",_
+    hTLS as ulong,_
+    msg$ as ptr,_
+    msgLen as long,_
+    EncryptSend as long
+End Function
+
 Function Receive(sock, byref buf$, bufLen)
     CallDLL #LBSchannelWrapper, "Receive",_
     sock as long,_
     buf$ as ptr,_
     bufLen as long,_
     Receive as long
+End Function
+
+Function DecryptReceive(hTLS, byref buf$, bufLen)
+    CallDLL #LBSchannelWrapper, "DecryptReceive",_
+    hTLS as ulong,_
+    buf$ as ptr,_
+    bufLen as long,_
+    DecryptReceive as long
 End Function

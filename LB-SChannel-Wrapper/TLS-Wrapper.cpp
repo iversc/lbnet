@@ -70,6 +70,8 @@ SECURITY_STATUS BeginTLSClientInternal(PTLSCtxtWrapper pWrapper, DWORD dwFlags)
 	sc.dwVersion = SCHANNEL_CRED_VERSION;
 	sc.dwFlags = dwFlags;
 
+	pWrapper->isServerContext = false;
+
 	return AcquireCredentialsHandle(NULL, const_cast<LPSTR>(UNISP_NAME), SECPKG_CRED_OUTBOUND, NULL,
 		&sc, NULL, NULL, pWrapper->pCredHandle, NULL);
 }
@@ -105,6 +107,15 @@ DLL_API SECURITY_STATUS BeginTLSServer(PTLSCtxtWrapper pWrapper)
 
 	PCCERT_CONTEXT serverCert;
 
+	sc.cSupportedAlgs = 0;
+	sc.palgSupportedAlgs = NULL;
+
+	sc.grbitEnabledProtocols = 0;
+	sc.dwMaximumCipherStrength = 0;
+	sc.dwMinimumCipherStrength = 0;
+	sc.dwSessionLifespan = 0;
+
+
 	serverCert = getServerCertificate();
 
 	if (serverCert == NULL)
@@ -115,6 +126,8 @@ DLL_API SECURITY_STATUS BeginTLSServer(PTLSCtxtWrapper pWrapper)
 	sc.paCred = &serverCert;
 
 	pWrapper->pCertContext = serverCert;
+
+	pWrapper->isServerContext = true;
 
 	return AcquireCredentialsHandle(NULL, const_cast<LPSTR>(UNISP_NAME), SECPKG_CRED_INBOUND, NULL,
 		&sc, NULL, NULL, pWrapper->pCredHandle, NULL);
@@ -131,7 +144,7 @@ DLL_API SECURITY_STATUS __stdcall BeginTLSClient(PTLSCtxtWrapper pWrapper)
 	return BeginTLSClientInternal(pWrapper, 0);
 }
 
-DLL_API SECURITY_STATUS __stdcall DisconnectFromServer(PTLSCtxtWrapper pWrapper)
+DLL_API SECURITY_STATUS __stdcall EndTLSClientSession(PTLSCtxtWrapper pWrapper)
 {
 	if (FAILED(WrapperCheck(pWrapper))) return SEC_E_INVALID_HANDLE;
 
@@ -170,7 +183,7 @@ DLL_API SECURITY_STATUS __stdcall DisconnectFromServer(PTLSCtxtWrapper pWrapper)
 		goto DFScleanup;
 	}
 
-	if (OutputBuf[0].pvBuffer != NULL & OutputBuf[0].cbBuffer != 0)
+	if (OutputBuf[0].pvBuffer != NULL && OutputBuf[0].cbBuffer != 0)
 	{
 		int numSent = send(pWrapper->sock, (LPCSTR)OutputBuf[0].pvBuffer, OutputBuf[0].cbBuffer, 0);
 		if (numSent == SOCKET_ERROR || numSent == 0)
@@ -267,10 +280,20 @@ SECURITY_STATUS RunHandshakeLoop(PTLSCtxtWrapper pWrapper, BOOL read)
 		OutputBuf[1].cbBuffer = 0;
 		OutputBuf[1].pvBuffer = NULL;
 
-		scRet = InitializeSecurityContext(pWrapper->pCredHandle, pWrapper->pCtxtHandle, NULL,
-			ISC_REQ_ALLOCATE_MEMORY | ISC_REQ_CONFIDENTIALITY | ISC_REQ_STREAM |
-			ISC_REQ_SEQUENCE_DETECT | ISC_REQ_REPLAY_DETECT | ISC_REQ_EXTENDED_ERROR,
-			0, 0, &InputBufDesc, 0, NULL, &OutputBufDesc, &dwFlagsRet, NULL);
+		if (pWrapper->isServerContext)
+		{
+			scRet = AcceptSecurityContext(pWrapper->pCredHandle, pWrapper->pCtxtHandle, &InputBufDesc,
+				ASC_REQ_ALLOCATE_MEMORY | ASC_REQ_CONFIDENTIALITY | ASC_REQ_STREAM |
+				ASC_REQ_SEQUENCE_DETECT | ASC_REQ_REPLAY_DETECT | ASC_REQ_EXTENDED_ERROR,
+				0, NULL, &OutputBufDesc, &dwFlagsRet, NULL);
+		}
+		else
+		{
+			scRet = InitializeSecurityContext(pWrapper->pCredHandle, pWrapper->pCtxtHandle, NULL,
+				ISC_REQ_ALLOCATE_MEMORY | ISC_REQ_CONFIDENTIALITY | ISC_REQ_STREAM |
+				ISC_REQ_SEQUENCE_DETECT | ISC_REQ_REPLAY_DETECT | ISC_REQ_EXTENDED_ERROR,
+				0, 0, &InputBufDesc, 0, NULL, &OutputBufDesc, &dwFlagsRet, NULL);
+		}
 
 #ifdef _DEBUG
 		WriteDebugLog("InitializeSecurityContext() called.\r\n");
@@ -394,6 +417,128 @@ SECURITY_STATUS RunHandshakeLoop(PTLSCtxtWrapper pWrapper, BOOL read)
 	} //while scRet ==
 
 	HeapFree(GetProcessHeap(), 0, inpBuf);
+	return scRet;
+}
+
+BOOL serverHandshakeDoInitialRead(SOCKET s, LPVOID * buffer, int * bufSize)
+{
+	int readSize = 1024;
+	LPVOID readBuf = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, readSize);
+
+	if (readBuf == NULL)
+	{
+		lastError = SEC_E_INSUFFICIENT_MEMORY;
+		return false;
+	}
+
+	int received = recv(s, (char *)readBuf, readSize, 0);
+	if (received == SOCKET_ERROR)
+	{
+		lastError = WSAGetLastError();
+		HeapFree(GetProcessHeap(), 0, readBuf);
+		return false;
+	}
+	if (received == 0)
+	{
+		lastError = WSAEDISCON;
+		HeapFree(GetProcessHeap(), 0, readBuf);
+		return false;
+	}
+
+	*buffer = readBuf;
+	*bufSize = received;
+	return true;
+}
+
+DLL_API SECURITY_STATUS __stdcall PerformServerHandshake(PTLSCtxtWrapper pWrapper, BOOL bPerformInitialRead, LPSTR initBuf, ULONG initBufSize)
+{
+	if (FAILED(WrapperCheck(pWrapper))) return SEC_E_INVALID_HANDLE;
+
+	SecBufferDesc OutputBufDesc, InputBufDesc;
+	SecBuffer OutputBuf, InputBuf[2];
+	LPVOID readBuf = NULL;
+
+	OutputBufDesc.ulVersion = SECBUFFER_VERSION;
+	OutputBufDesc.cBuffers = 1;
+	OutputBufDesc.pBuffers = &OutputBuf;
+
+	OutputBuf.BufferType = SECBUFFER_TOKEN;
+	OutputBuf.cbBuffer = 0;
+	OutputBuf.pvBuffer = NULL;
+
+	pWrapper->pCtxtHandle = new CtxtHandle();
+	DWORD dwSSPIOutFlags = 0;
+
+	InputBufDesc.ulVersion = SECBUFFER_VERSION;
+	InputBufDesc.cBuffers = 2;
+	InputBufDesc.pBuffers = InputBuf;
+
+	InputBuf[1].BufferType = SECBUFFER_EMPTY;
+	InputBuf[1].cbBuffer = 0;
+	InputBuf[1].pvBuffer = NULL;
+
+	InputBuf[0].BufferType = SECBUFFER_TOKEN;
+
+	if (bPerformInitialRead)
+	{
+		int received = 0;
+		if (!serverHandshakeDoInitialRead(pWrapper->sock, &readBuf, &received))
+		{
+			return SOCKET_ERROR;
+		}
+
+		InputBuf[0].pvBuffer = readBuf;
+		InputBuf[0].cbBuffer = received;
+	}
+	else
+	{
+		InputBuf[0].pvBuffer = initBuf;
+		InputBuf[0].cbBuffer = initBufSize;
+	}
+
+	DWORD dwAASCFlags = ASC_REQ_ALLOCATE_MEMORY | ASC_REQ_CONFIDENTIALITY | ASC_REQ_STREAM |
+		ASC_REQ_SEQUENCE_DETECT | ASC_REQ_REPLAY_DETECT | ASC_REQ_EXTENDED_ERROR;
+
+	SECURITY_STATUS scRet = AcceptSecurityContext(pWrapper->pCredHandle, NULL, &InputBufDesc,
+		dwAASCFlags, 0, pWrapper->pCtxtHandle, &OutputBufDesc, &dwSSPIOutFlags, NULL);
+
+	if (readBuf != NULL)
+	{
+		HeapFree(GetProcessHeap(), 0, readBuf);
+	}
+
+	if (scRet != SEC_I_CONTINUE_NEEDED && scRet != SEC_E_INCOMPLETE_MESSAGE)
+	{
+		lastError = scRet;
+		return scRet;
+	}
+
+
+	if (OutputBuf.cbBuffer != 0 && OutputBuf.pvBuffer != NULL && scRet != SEC_E_INCOMPLETE_MESSAGE)
+	{
+		int sent = send(pWrapper->sock, (LPCSTR)OutputBuf.pvBuffer, OutputBuf.cbBuffer, 0);
+		FreeContextBuffer(OutputBuf.pvBuffer);
+
+		if (sent == SOCKET_ERROR)
+		{
+			lastError = WSAGetLastError();		
+			return SEC_E_INTERNAL_ERROR;
+		}
+	}
+
+	scRet = RunHandshakeLoop(pWrapper, TRUE);
+
+	if (scRet != SEC_E_OK)
+	{
+		return scRet;
+	}
+
+	SECURITY_STATUS qcaRet = QueryContextAttributes(pWrapper->pCtxtHandle, SECPKG_ATTR_STREAM_SIZES, &pWrapper->sizes);
+	if (qcaRet != SEC_E_OK)
+	{
+		return qcaRet;
+	}
+
 	return scRet;
 }
 
