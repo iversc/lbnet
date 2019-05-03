@@ -104,51 +104,43 @@
             leftOver$ = cmdBuf$
             goto [bufLoop]
         end if
+        LINETERMSIZE = 1
+    else
+        LINETERMSIZE = 2
     end if
+    print cmdBuf$
 
     cmd$ = trim$(left$(cmdBuf$, lineComplete - 1))
-    if cmd$ = "" then
-        cmdBuf$ = right$(cmdBuf$, len(cmdBuf$) - lineComplete)
-        goto [lineLoop]
-    end if
     Print "< ";cmd$
 
-    if cmd$ = "END" then
-        dataSend$ = "END RECEIVED, TERMINATING SERVER." + chr$(13) + chr$(10)
-    else
-        if cmd$ = "CLOSE" then
-            dataSend$ = "CLOSE RECEIVED, CLOSING CONNECTION AND ACCEPTING NEW ONE." + chr$(13) + chr$(10)
-        else
-            dataSend$ = "DATA " + str$(randNum(1, 100)) + chr$(13) + chr$(10)
-        end if
-    end if
+    cmdBuf$ = right$(cmdBuf$, len(cmdBuf$) - (lineComplete))
+    if cmd$ <> "" then goto [lineLoop]
 
 
-    print "> ";dataSend$
-    sendLen = len(dataSend$)
-    ret = EncryptSend(hTLS, dataSend$, sendLen)
-    if ret = -1 then
-        print "Socket error occurred when sending data. - ";GetError()
-        a = CloseSocket(hConn)
-        a = DestroyTLSContext(hTLS)
-        goto [awaitLoop]
-    end if
+    responseStatus$  = "HTTP/1.0 200 OK"
+    responseHeaders$ = "Server: LB Test" + crlf$
+    responseHeaders$ = responseHeaders$ + "Content-Language: en" + crlf$
+    responseHeaders$ = responseHeaders$ + "Content-Type: text/html; charset=utf8" + crlf$
+    responseHeaders$ = responseHeaders$ + "Connection: close" + crlf$
 
-    dataSend$ = ""
+    open "test.html" for input as #file
+    content$ = input$(#file, lof(#file))
+    close #file
 
-    if cmd$ = "END" or cmd$ = "CLOSE" then
-        a = CloseSocket(hConn)
-        a = DestroyTLSContext(hTLS)
-        cmdBuf$ = ""
-        leftOver$ = ""
-        if cmd$ = "END" then [doSockEnd]
-        goto [awaitLoop]
-    end if
+    lenContent = len(content$)
 
-    cmdBuf$ = right$(cmdBuf$, len(cmdBuf$) - lineComplete)
-    goto [lineLoop]
+    responseHeaders$ = responseHeaders$ + "Content-Length: " + str$(lenContent) + crlf$
 
+    response$ = responseStatus$ + crlf$ + responseHeaders$ + crlf$ + content$
 
+    lenResponse = len(response$)
+
+    ret = EncryptSend(hTLS, response$, lenResponse)
+    print
+    print response$
+
+    a = CloseSocket(hConn)
+    a = DestroyTLSContext(hTLS)
 
 [doSockEnd]
     a = CloseSocket(hServSock)

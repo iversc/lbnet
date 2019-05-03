@@ -76,7 +76,7 @@ SECURITY_STATUS BeginTLSClientInternal(PTLSCtxtWrapper pWrapper, DWORD dwFlags)
 		&sc, NULL, NULL, pWrapper->pCredHandle, NULL);
 }
 
-PCCERT_CONTEXT getServerCertificate()
+PCCERT_CONTEXT getServerCertificate(LPCSTR serverName)
 {
 	HCERTSTORE hStore = NULL;
 	PCCERT_CONTEXT pCertContext = NULL;
@@ -91,13 +91,13 @@ PCCERT_CONTEXT getServerCertificate()
 	}
 
 	pCertContext = CertFindCertificateInStore(hStore, X509_ASN_ENCODING,
-		0, CERT_FIND_SUBJECT_STR_A, "localhost", NULL);
+		0, CERT_FIND_SUBJECT_STR_A, serverName, NULL);
 
 	CertCloseStore(hStore, 0);
 	return pCertContext;
 }
 
-DLL_API SECURITY_STATUS BeginTLSServer(PTLSCtxtWrapper pWrapper)
+DLL_API SECURITY_STATUS BeginTLSServer(PTLSCtxtWrapper pWrapper, LPCSTR serverName)
 {
 	if (FAILED(WrapperCheck(pWrapper))) return SEC_E_INVALID_HANDLE;
 
@@ -116,7 +116,7 @@ DLL_API SECURITY_STATUS BeginTLSServer(PTLSCtxtWrapper pWrapper)
 	sc.dwSessionLifespan = 0;
 
 
-	serverCert = getServerCertificate();
+	serverCert = getServerCertificate(serverName);
 
 	if (serverCert == NULL)
 	{
