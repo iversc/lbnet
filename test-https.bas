@@ -104,11 +104,7 @@
             leftOver$ = cmdBuf$
             goto [bufLoop]
         end if
-        LINETERMSIZE = 1
-    else
-        LINETERMSIZE = 2
     end if
-    print cmdBuf$
 
     cmd$ = trim$(left$(cmdBuf$, lineComplete - 1))
     Print "< ";cmd$
