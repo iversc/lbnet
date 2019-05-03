@@ -15,6 +15,7 @@
 #pragma comment(lib, "Secur32.lib")
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "iphlpapi.lib")
+#pragma comment(lib, "crypt32.lib")
 
 WSADATA wsaData;
 ULONG lastError = 0;
