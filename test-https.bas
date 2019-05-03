@@ -154,6 +154,9 @@
 Function randNum(min, max)
     randNum = int(rnd(1) * max) + min
 End Function
+
+
+
 '====================
 '==Helper Functions==
 '====================
@@ -187,6 +190,18 @@ Function DestroyTLSContext(hTLS)
     DestroyTLSContext as long
 End Function
 
+Function BeginTLSClientNoValidation(hTLS)
+    CallDLL #LBSchannelWrapper, "BeginTLSClientNoValidation",_
+    hTLS as ulong,_
+    BeginTLSClientNoValidation as long
+End Function
+
+Function BeginTLSClient(hTLS)
+    CallDLL #LBSchannelWrapper, "BeginTLSClient",_
+    hTLS as ulong,_
+    BeginTLSClient as long
+End Function
+
 Function IsSocketInvalid(sock)
     CallDLL #LBSchannelWrapper, "IsSocketInvalid",_
     sock as ulong,_
@@ -205,6 +220,13 @@ Function SetTLSSocket(hTLS, sock)
     hTLS as ulong,_
     sock as long,_
     SetTLSSock as long
+End Function
+
+Function PerformClientHandshake(hTLS, servernName$)
+    CallDLL #LBSchannelWrapper, "PerformClientHandshake",_
+    hTLS as ulong,_
+    serverName$ as ptr,_
+    PerformClientHandshake as long
 End Function
 
 Function PerformServerHandshake(hTLS, doInitialRead, initBuf$, initBufSize)
@@ -235,7 +257,14 @@ Function IsReadAvailable(socket, msTimeout)
     IsReadAvailable as long
 End Function
 
-Function PingHost(host$, byref status, byref msResponse, msTimeout)
+Function IsTLSReadAvailable(hTLS, msTimeout)
+    CallDLL #LBSchannelWrapper, "IsTLSReadAvailable",_
+    hTLS as ulong,_
+    msTimeout as long,_
+    IsTLSReadAvailable as long
+End Function
+
+Function PingHost(host$, packetSize, byref status, byref msResponse, msTimeout)
     struct a, b as long
     struct c, d as long
 
@@ -244,6 +273,7 @@ Function PingHost(host$, byref status, byref msResponse, msTimeout)
 
     CallDLL #LBSchannelWrapper, "PingHost",_
     host$ as ptr,_
+    packetSize as long,_
     a as struct,_
     c as struct,_
     msTimeout as long,_
@@ -307,3 +337,11 @@ Function DecryptReceive(hTLS, byref buf$, bufLen)
     bufLen as long,_
     DecryptReceive as long
 End Function
+
+Function EndTLSClientSession(hTLS)
+    CallDLL #LBSchannelWrapper, "EndTLSClientSession",_
+    hTLS as ulong,_
+    EndTLSClientSession as long
+End Function
+
+
