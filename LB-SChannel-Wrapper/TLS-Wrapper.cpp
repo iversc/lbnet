@@ -120,6 +120,7 @@ DLL_API SECURITY_STATUS BeginTLSServer(PTLSCtxtWrapper pWrapper)
 
 	if (serverCert == NULL)
 	{
+		lastError = SEC_E_INTERNAL_ERROR;
 		return SEC_E_INTERNAL_ERROR;
 	}
 

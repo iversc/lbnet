@@ -39,6 +39,7 @@
     ret = BeginTLSServer(hTLS)
     if ret <> 0 then
         print "BeginTLSServer() failed. ret - ";ret;" -- Error - ";GetError()
+        Print dechex$( (abs(ret) XOR hexdec("FFFFFFFF")) + 1)
         a = DestroyTLSContext(hTLS)
         goto [doSockEnd]
     end if
@@ -91,14 +92,18 @@
     End if
 
     crlf$ = chr$(13) + chr$(10)
+    lf$ = chr$(10)
 
     cmdBuf$ = leftOver$ + left$(buf$, num)
 
 [lineLoop]
     lineComplete = instr(cmdBuf$, crlf$)
     if lineComplete = 0 then
-        leftOver$ = cmdBuf$
-        goto [bufLoop]
+        lineComplete = instr(cmdBuf$, lf$)
+        if lineComplete = 0 then
+            leftOver$ = cmdBuf$
+            goto [bufLoop]      
+        end if
     end if
 
     cmd$ = left$(cmdBuf$, lineComplete - 1)
