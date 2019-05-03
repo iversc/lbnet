@@ -1,6 +1,6 @@
 @echo off
 
-cd %~dp0
+cd /D %~dp0
 
 certutil -addstore Root root-ca\certs\root-ca.crt
 
