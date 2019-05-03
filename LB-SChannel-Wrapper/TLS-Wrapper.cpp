@@ -76,11 +76,160 @@ SECURITY_STATUS BeginTLSClientInternal(PTLSCtxtWrapper pWrapper, DWORD dwFlags)
 		&sc, NULL, NULL, pWrapper->pCredHandle, NULL);
 }
 
-PCCERT_CONTEXT getServerCertificate(LPCSTR serverName)
+PCCERT_CONTEXT getServerCertificate(LPCSTR serverName, HCERTSTORE hStore)
 {
+	PCCERT_CONTEXT pCertContext = NULL;
+
+	pCertContext = CertFindCertificateInStore(hStore, X509_ASN_ENCODING,
+		0, CERT_FIND_SUBJECT_STR_A, serverName, NULL);
+
+	CertCloseStore(hStore, 0);
+
+	return pCertContext;
+}
+
+SECURITY_STATUS BeginTLSServerInternal(PTLSCtxtWrapper pWrapper, PCCERT_CONTEXT serverCert)
+{
+	if (FAILED(WrapperCheck(pWrapper))) return SEC_E_INVALID_HANDLE;
+
+	pWrapper->pCredHandle = new CredHandle();
+	SCHANNEL_CRED sc = SCHANNEL_CRED();
+	sc.dwVersion = SCHANNEL_CRED_VERSION;
+
+	if (serverCert == NULL)
+	{
+		lastError = SEC_E_INTERNAL_ERROR;
+		return SEC_E_INTERNAL_ERROR;
+	}
+
+	sc.paCred = &serverCert;
+	sc.cCreds = 1;
+
+	pWrapper->pCertContext = serverCert;
+
+	pWrapper->isServerContext = true;
+
+	return AcquireCredentialsHandle(NULL, const_cast<LPSTR>(UNISP_NAME), SECPKG_CRED_INBOUND, NULL,
+		&sc, NULL, NULL, pWrapper->pCredHandle, NULL);
+}
+
+DLL_API SECURITY_STATUS BeginTLSServerWithCert(PTLSCtxtWrapper pWrapper, LPCSTR serverName, LPCSTR fileName, LPCSTR filePassword)
+{
+	HANDLE hFile = NULL;
+	DWORD fileSize = 0;
+    DWORD bytesRead = 0;
+	LPVOID fileData = NULL;
+	CRYPT_DATA_BLOB pfxData = CRYPT_DATA_BLOB();
+	PCCERT_CONTEXT pCertContext = NULL;
 	HCERTSTORE hStore = NULL;
+
+	int unicodeByteSize = 0;
+	int filePasswordSize = 0;
+	LPWSTR unicodePassword = NULL;
+
+	SECURITY_STATUS scRet = SEC_E_OK;
+
+	hFile = CreateFile(fileName, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
+		FILE_ATTRIBUTE_NORMAL, NULL);
+
+	if (hFile == INVALID_HANDLE_VALUE)
+	{
+		lastError = GetLastError();
+		return SEC_E_INVALID_PARAMETER;
+	}
+
+	fileSize = GetFileSize(hFile, NULL);
+
+	fileData = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, fileSize);
+	if (fileData == NULL)
+	{
+		lastError = GetLastError();
+		return SEC_E_INSUFFICIENT_MEMORY;
+	}
+
+	if (!ReadFile(hFile, fileData, fileSize, &bytesRead, NULL))
+	{
+		lastError = GetLastError();
+		CloseHandle(hFile);
+		scRet = SEC_E_INTERNAL_ERROR;
+		goto BTSWC_Cleanup;
+	}
+
+	CloseHandle(hFile);
+
+	pfxData.cbData = bytesRead;
+	pfxData.pbData = (BYTE *)fileData;
+
+	//Need to convert to Unicode, as the PFXImportCertStore function only has Unicode bindings
+
+	filePasswordSize = lstrlen(filePassword);
+
+	if (filePasswordSize > 0)
+	{
+		unicodeByteSize = MultiByteToWideChar(CP_ACP, 0, filePassword, filePasswordSize, NULL, 0);
+
+		if (unicodeByteSize == 0)
+		{
+			lastError = GetLastError();
+			scRet = SEC_E_INTERNAL_ERROR;
+			goto BTSWC_Cleanup;
+		}
+
+		unicodePassword = (LPWSTR)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, unicodeByteSize);
+		if (unicodePassword == NULL)
+		{
+			lastError = GetLastError();
+			scRet = SEC_E_INSUFFICIENT_MEMORY;
+			goto BTSWC_Cleanup;
+		}
+
+		if (!MultiByteToWideChar(CP_ACP, 0, filePassword, filePasswordSize, unicodePassword, unicodeByteSize))
+		{
+			lastError = GetLastError();
+			scRet = SEC_E_INTERNAL_ERROR;
+			goto BTSWC_Cleanup;
+		}
+	}
+	else
+	{
+		unicodePassword = (LPWSTR)L"";
+	}
+
+	hStore = PFXImportCertStore(&pfxData, unicodePassword, CRYPT_USER_KEYSET | PKCS12_NO_PERSIST_KEY);
+	if (hStore == NULL)
+	{
+		lastError = GetLastError();
+		scRet = SEC_E_INTERNAL_ERROR;
+		goto BTSWC_Cleanup;
+	}
+	pCertContext = getServerCertificate(serverName, hStore);
+
+	if (pCertContext == NULL)
+	{
+		scRet = SEC_E_NO_CREDENTIALS;
+		goto BTSWC_Cleanup;
+	}
+
+#ifdef _DEBUG
+	WriteDebugLog("All prep complete, calling BeginTLSServerInternal()...\n");
+#endif
+
+	scRet = BeginTLSServerInternal(pWrapper, pCertContext);
+
+BTSWC_Cleanup:
+	if (hStore) CertCloseStore(hStore, 0);
+	if (unicodePassword) HeapFree(GetProcessHeap(), 0, unicodePassword);
+	if (fileData) HeapFree(GetProcessHeap(), 0, fileData);
+	return scRet;
+}
+
+DLL_API SECURITY_STATUS BeginTLSServer(PTLSCtxtWrapper pWrapper, LPCSTR serverName)
+{
+	if (FAILED(WrapperCheck(pWrapper))) return SEC_E_INVALID_HANDLE;
+
 	PCCERT_CONTEXT pCertContext = NULL;
 	bool user = false;
+	HCERTSTORE hStore = NULL;
 	DWORD dwFlags = 0;
 
 	while (pCertContext == NULL && !user)
@@ -104,42 +253,10 @@ PCCERT_CONTEXT getServerCertificate(LPCSTR serverName)
 			}
 		}
 
-		pCertContext = CertFindCertificateInStore(hStore, X509_ASN_ENCODING,
-			0, CERT_FIND_SUBJECT_STR_A, serverName, NULL);
-
-		CertCloseStore(hStore, 0);
+		pCertContext = getServerCertificate(serverName, hStore);
 	}
 
-	return pCertContext;
-}
-
-DLL_API SECURITY_STATUS BeginTLSServer(PTLSCtxtWrapper pWrapper, LPCSTR serverName)
-{
-	if (FAILED(WrapperCheck(pWrapper))) return SEC_E_INVALID_HANDLE;
-
-	pWrapper->pCredHandle = new CredHandle();
-	SCHANNEL_CRED sc = SCHANNEL_CRED();
-	sc.dwVersion = SCHANNEL_CRED_VERSION;
-
-	PCCERT_CONTEXT serverCert;
-
-	serverCert = getServerCertificate(serverName);
-
-	if (serverCert == NULL)
-	{
-		lastError = SEC_E_INTERNAL_ERROR;
-		return SEC_E_INTERNAL_ERROR;
-	}
-
-	sc.paCred = &serverCert;
-	sc.cCreds = 1;
-
-	pWrapper->pCertContext = serverCert;
-
-	pWrapper->isServerContext = true;
-
-	return AcquireCredentialsHandle(NULL, const_cast<LPSTR>(UNISP_NAME), SECPKG_CRED_INBOUND, NULL,
-		&sc, NULL, NULL, pWrapper->pCredHandle, NULL);
+	return BeginTLSServerInternal(pWrapper, pCertContext);
 }
 
 DLL_API SECURITY_STATUS __stdcall BeginTLSClientNoValidation(PTLSCtxtWrapper pWrapper)
