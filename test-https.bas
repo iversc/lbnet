@@ -16,7 +16,7 @@
     ret = IsReadAvailable(hServSock, 0)
     if ret = 0 then
         print "No connections yet.  Waiting..."
-        timer 1000, [awaitLoop]
+        timer 1, [awaitLoop]
         wait
     end if
 
@@ -51,7 +51,7 @@
     ret = IsReadAvailable(hConn, 0)
     if ret = 0 then
         'No data available this time.  Wait.
-        timer 1000, [handshakeLoop]
+        timer 1, [handshakeLoop]
         wait
     end if
 
@@ -77,7 +77,7 @@
     ret = IsReadAvailable(hConn, 0)
     if ret = 0 then
         'No data waiting.  Stop and wait.
-        timer 1000, [bufLoop]
+        timer 1, [bufLoop]
         wait
     end if
 
@@ -104,13 +104,20 @@
             leftOver$ = cmdBuf$
             goto [bufLoop]
         end if
+        CR = 0
+    else
+        CR = 1
     end if
 
     cmd$ = trim$(left$(cmdBuf$, lineComplete - 1))
+
     Print "< ";cmd$
 
-    cmdBuf$ = right$(cmdBuf$, len(cmdBuf$) - (lineComplete))
-    if cmd$ <> "" then goto [lineLoop]
+    if cmdBuf$ <> crlf$ and cmdBuf$ <> lf$ then
+
+        cmdBuf$ = right$(cmdBuf$, len(cmdBuf$) - lineComplete - CR)
+        goto [lineLoop]
+    end if
 
 
     responseStatus$  = "HTTP/1.0 200 OK"

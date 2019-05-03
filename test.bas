@@ -104,6 +104,9 @@
             leftOver$ = cmdBuf$
             goto [bufLoop]
         end if
+        CR = 0
+    else
+        CR = 1
     end if
 
     cmd$ = trim$(left$(cmdBuf$, lineComplete - 1))
@@ -145,7 +148,7 @@
         goto [awaitLoop]
     end if
 
-    cmdBuf$ = right$(cmdBuf$, len(cmdBuf$) - lineComplete)
+    cmdBuf$ = right$(cmdBuf$, len(cmdBuf$) - lineComplete - CR)
     goto [lineLoop]
 
 
