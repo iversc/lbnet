@@ -80,20 +80,36 @@ PCCERT_CONTEXT getServerCertificate(LPCSTR serverName)
 {
 	HCERTSTORE hStore = NULL;
 	PCCERT_CONTEXT pCertContext = NULL;
+	bool user = false;
+	DWORD dwFlags = 0;
 
-	hStore = CertOpenStore(CERT_STORE_PROV_SYSTEM, X509_ASN_ENCODING, NULL,
-		CERT_SYSTEM_STORE_LOCAL_MACHINE, L"MY");
-
-	if (hStore == NULL)
+	while (pCertContext == NULL && !user)
 	{
-		lastError = SEC_E_INCOMPLETE_CREDENTIALS;
-		return NULL;
+		dwFlags = (!hStore) ? CERT_SYSTEM_STORE_LOCAL_MACHINE : CERT_SYSTEM_STORE_CURRENT_USER;
+		if (hStore) user = true;
+
+		hStore = CertOpenStore(CERT_STORE_PROV_SYSTEM, X509_ASN_ENCODING, NULL,
+			dwFlags, L"MY");
+
+		if (hStore == NULL)
+		{
+			if (user)
+			{
+				lastError = SEC_E_INCOMPLETE_CREDENTIALS;
+				return NULL;
+			}
+			else
+			{
+				continue;
+			}
+		}
+
+		pCertContext = CertFindCertificateInStore(hStore, X509_ASN_ENCODING,
+			0, CERT_FIND_SUBJECT_STR_A, serverName, NULL);
+
+		CertCloseStore(hStore, 0);
 	}
 
-	pCertContext = CertFindCertificateInStore(hStore, X509_ASN_ENCODING,
-		0, CERT_FIND_SUBJECT_STR_A, serverName, NULL);
-
-	CertCloseStore(hStore, 0);
 	return pCertContext;
 }
 
@@ -106,15 +122,6 @@ DLL_API SECURITY_STATUS BeginTLSServer(PTLSCtxtWrapper pWrapper, LPCSTR serverNa
 	sc.dwVersion = SCHANNEL_CRED_VERSION;
 
 	PCCERT_CONTEXT serverCert;
-
-	sc.cSupportedAlgs = 0;
-	sc.palgSupportedAlgs = NULL;
-
-	sc.grbitEnabledProtocols = 0;
-	sc.dwMaximumCipherStrength = 0;
-	sc.dwMinimumCipherStrength = 0;
-	sc.dwSessionLifespan = 0;
-
 
 	serverCert = getServerCertificate(serverName);
 
