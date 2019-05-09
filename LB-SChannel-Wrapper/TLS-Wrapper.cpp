@@ -343,13 +343,37 @@ SECURITY_STATUS RunHandshakeLoop(PTLSCtxtWrapper pWrapper, BOOL read)
 	DWORD bufCount = 0;
 	DWORD bufSize = IO_BUFFER_SIZE;
 	DWORD dwFlagsRet = 0;
+	PCtxtHandle acceptTemp = NULL;
+	SECURITY_STATUS scRet = 0;
 
 	if (inpBuf == NULL)
 	{
 		return SEC_E_INTERNAL_ERROR;
 	}
 
-	SECURITY_STATUS scRet = SEC_I_CONTINUE_NEEDED;
+	if (pWrapper->isServerContext && !pWrapper->acceptSuccess)
+	{
+		scRet = SEC_E_INCOMPLETE_MESSAGE;
+
+		PSecBuffer InExtraData = &pWrapper->ExtraData;
+
+		CopyMemory(inpBuf, InExtraData->pvBuffer, InExtraData->cbBuffer);
+		bufCount = InExtraData->cbBuffer;
+
+		if (pWrapper->freeInitialData)
+		{
+			HeapFree(GetProcessHeap(), 0, InExtraData->pvBuffer);
+		}
+
+		InExtraData->BufferType = SECBUFFER_EMPTY;
+		InExtraData->cbBuffer = 0;
+		InExtraData->pvBuffer = NULL;
+	}
+	else
+	{
+		scRet = SEC_I_CONTINUE_NEEDED;
+	}
+
 
 #ifdef _DEBUG
 	WriteDebugLog("Entered RunHandshakeLoop\r\n");
@@ -414,10 +438,11 @@ SECURITY_STATUS RunHandshakeLoop(PTLSCtxtWrapper pWrapper, BOOL read)
 
 		if (pWrapper->isServerContext)
 		{
-			scRet = AcceptSecurityContext(pWrapper->pCredHandle, pWrapper->pCtxtHandle, &InputBufDesc,
+			acceptTemp = (pWrapper->acceptSuccess) ? pWrapper->pCtxtHandle : NULL;
+			scRet = AcceptSecurityContext(pWrapper->pCredHandle, acceptTemp, &InputBufDesc,
 				ASC_REQ_ALLOCATE_MEMORY | ASC_REQ_CONFIDENTIALITY | ASC_REQ_STREAM |
 				ASC_REQ_SEQUENCE_DETECT | ASC_REQ_REPLAY_DETECT | ASC_REQ_EXTENDED_ERROR,
-				0, NULL, &OutputBufDesc, &dwFlagsRet, NULL);
+				0, pWrapper->pCtxtHandle, &OutputBufDesc, &dwFlagsRet, NULL);
 		}
 		else
 		{
@@ -438,6 +463,11 @@ SECURITY_STATUS RunHandshakeLoop(PTLSCtxtWrapper pWrapper, BOOL read)
 		if (scRet == SEC_E_OK || scRet == SEC_I_CONTINUE_NEEDED ||
 			FAILED(scRet) && (dwFlagsRet & ISC_REQ_EXTENDED_ERROR))
 		{
+			if (pWrapper->isServerContext && !pWrapper->acceptSuccess)
+			{
+				pWrapper->acceptSuccess = TRUE;
+			}
+
 			if (OutputBuf[0].cbBuffer != 0 && OutputBuf[0].pvBuffer != NULL)
 			{
 				int sent = send(pWrapper->sock, (LPCSTR)OutputBuf[0].pvBuffer, OutputBuf[0].cbBuffer, 0);
@@ -634,7 +664,16 @@ DLL_API SECURITY_STATUS __stdcall PerformServerHandshake(PTLSCtxtWrapper pWrappe
 	SECURITY_STATUS scRet = AcceptSecurityContext(pWrapper->pCredHandle, NULL, &InputBufDesc,
 		dwAASCFlags, 0, pWrapper->pCtxtHandle, &OutputBufDesc, &dwSSPIOutFlags, NULL);
 
-	if (readBuf != NULL)
+	if (scRet == SEC_E_INCOMPLETE_MESSAGE)
+	{
+		pWrapper->ExtraData.BufferType = SECBUFFER_EXTRA;
+		pWrapper->ExtraData.cbBuffer = InputBuf[0].cbBuffer;
+		pWrapper->ExtraData.pvBuffer = InputBuf[0].pvBuffer;
+
+		pWrapper->freeInitialData = (readBuf != NULL);
+	}
+
+	if (readBuf != NULL && scRet != SEC_E_INCOMPLETE_MESSAGE)
 	{
 		HeapFree(GetProcessHeap(), 0, readBuf);
 	}
@@ -648,6 +687,11 @@ DLL_API SECURITY_STATUS __stdcall PerformServerHandshake(PTLSCtxtWrapper pWrappe
 
 	if (OutputBuf.cbBuffer != 0 && OutputBuf.pvBuffer != NULL && scRet != SEC_E_INCOMPLETE_MESSAGE)
 	{
+		//AcceptSecurityContext() isn't happy if you try to call it again with an existing context
+		//handle if it didn't return SEC_I_CONTINUE_NEEDED.  This lets us modify
+		//how we call it later.
+		pWrapper->acceptSuccess = TRUE;
+
 		int sent = send(pWrapper->sock, (LPCSTR)OutputBuf.pvBuffer, OutputBuf.cbBuffer, 0);
 		FreeContextBuffer(OutputBuf.pvBuffer);
 

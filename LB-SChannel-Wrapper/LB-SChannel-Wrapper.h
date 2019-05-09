@@ -9,7 +9,7 @@
 #define cbMaxMessage 12000
 #define IO_BUFFER_SIZE  0x10000
 
-#define TLS_Wrapper_Version 8
+#define TLS_Wrapper_Version 9
 
 extern WSADATA wsaData;
 extern ULONG lastError;
@@ -34,5 +34,7 @@ typedef struct TLSCtxtWrapper
 	SecBuffer RemainingDecryptData;
 	PCCERT_CONTEXT pCertContext;
 	BOOL isServerContext;
+	BOOL acceptSuccess;
+	BOOL freeInitialData;
 } *PTLSCtxtWrapper;
 
