@@ -32,6 +32,38 @@
         goto [doSockEnd]
     end if
 
+
+
+[initReadLoop]
+    timer 0
+    ret = IsReadAvailable(hConn, 0)
+    if ret = 0 then
+
+        timer 1, [initReadLoop]
+        wait
+    end if
+
+    bufLen = 128
+    buf$ = space$(bufLen)
+    ret = Receive(hConn, buf$, bufLen)
+
+    if ret = 0 or ret = -1 then
+        print "Receive() failed. - ";ret;" - ";GetError()
+        a = CloseSocket(hConn)
+        goto [doSockEnd]
+    end if
+
+    if asc(mid$(buf$, 1, 1)) = hexdec("16") then
+        print "ClientHello detected, passing to TLS handshake..."
+        byteCount = ret
+        goto [beginTLS]
+    end if
+
+    num = ret
+    goto [firstInputSkip]
+
+[beginTLS]
+
     print "Creating TLS context..."
     hTLS = CreateTLSContext()
 
@@ -47,26 +79,14 @@
     Print "Finishing connection..."
 
 [handshakeLoop]
-    timer 0
-    ret = IsReadAvailable(hConn, 0)
-    if ret = 0 then
-        'No data available this time.  Wait.
-        timer 1, [handshakeLoop]
-        wait
-    end if
-
-    if ret = -1 then
-        Print "IsReadAvailable() failed. - ";GetError()
-        a = CloseSocket(hConn)
-        a = DestroyTLSContext(hTLS)
-        goto [awaitLoop]
-    end if
+    TLSActive = 1
 
     a = SetTLSSocket(hTLS, hConn)
 
-    ret = PerformServerHandshake(hTLS, 1, "", 0)
+    ret = PerformServerHandshake(hTLS, 0, buf$, byteCount)
     if ret <> 0 then
         print "PerformServerHandshake() failed. - ";ret; " - Error: ";dechex$(GetError())
+        Print dechex$( (abs(ret) XOR hexdec("FFFFFFFF")) + 1)
         a = CloseSocket(hConn)
         a = DestroyTLSContext(hTLS)
         goto [doSockEnd]
@@ -83,13 +103,20 @@
 
     bufLen = 512
     buf$ = space$(bufLen)
-    num = DecryptReceive(hTLS, buf$, bufLen)
-    If num = -1 then
+    if TLSActive then
+        num = DecryptReceive(hTLS, buf$, bufLen)
+    else
+        num = Receive(hConn, buf$, bufLen)
+    end if
+
+    If num = -1 or (TLSActive = 0 AND num = 0) then
         Print "Socket error occurred. - ";GetError()
         a = CloseSocket(hConn)
         a = DestroyTLSContext(hTLS)
         goto [awaitLoop]
     End if
+
+[firstInputSkip]
 
     crlf$ = chr$(13) + chr$(10)
     lf$ = chr$(10)
@@ -126,6 +153,14 @@
     responseHeaders$ = responseHeaders$ + "Content-Type: text/html; charset=utf8" + crlf$
     responseHeaders$ = responseHeaders$ + "Connection: close" + crlf$
 
+    if TLSActive then
+        secure$ = "yes"
+    else
+        secure$ = "no"
+    end if
+
+    responseHeaders$ = responseHeaders$ + "X-Request-Secure: " + secure$ + crlf$
+
     open "test.html" for input as #file
     content$ = input$(#file, lof(#file))
     close #file
@@ -138,7 +173,11 @@
 
     lenResponse = len(response$)
 
-    ret = EncryptSend(hTLS, response$, lenResponse)
+    if TLSActive then
+        ret = EncryptSend(hTLS, response$, lenResponse)
+    else
+        ret = Send(hConn, response$, lenResponse)
+    end if
     print
     print response$
 
