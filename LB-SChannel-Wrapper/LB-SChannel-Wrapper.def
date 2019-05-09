@@ -24,4 +24,4 @@ EXPORTS
 	EndTLSClientSession
 	BeginTLSServer
 	PerformServerHandshake
-	BeginTLSServerWithCert
+	BeginTLSServerWithPFX

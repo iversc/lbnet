@@ -113,7 +113,7 @@ SECURITY_STATUS BeginTLSServerInternal(PTLSCtxtWrapper pWrapper, PCCERT_CONTEXT 
 		&sc, NULL, NULL, pWrapper->pCredHandle, NULL);
 }
 
-DLL_API SECURITY_STATUS BeginTLSServerWithCert(PTLSCtxtWrapper pWrapper, LPCSTR serverName, LPCSTR fileName, LPCSTR filePassword)
+DLL_API SECURITY_STATUS BeginTLSServerWithPFX(PTLSCtxtWrapper pWrapper, LPCSTR serverName, LPCSTR fileName, LPCSTR filePassword)
 {
 	HANDLE hFile = NULL;
 	DWORD fileSize = 0;
@@ -128,6 +128,12 @@ DLL_API SECURITY_STATUS BeginTLSServerWithCert(PTLSCtxtWrapper pWrapper, LPCSTR 
 	LPWSTR unicodePassword = NULL;
 
 	SECURITY_STATUS scRet = SEC_E_OK;
+
+#ifdef _DEBUG
+	WriteDebugLog(fileName);
+	WriteDebugLog("\r\n");
+#endif
+
 
 	hFile = CreateFile(fileName, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
 		FILE_ATTRIBUTE_NORMAL, NULL);
@@ -162,7 +168,7 @@ DLL_API SECURITY_STATUS BeginTLSServerWithCert(PTLSCtxtWrapper pWrapper, LPCSTR 
 
 	//Need to convert to Unicode, as the PFXImportCertStore function only has Unicode bindings
 
-	filePasswordSize = lstrlen(filePassword);
+	filePasswordSize = lstrlen(filePassword) + 1;
 
 	if (filePasswordSize > 0)
 	{
@@ -195,7 +201,7 @@ DLL_API SECURITY_STATUS BeginTLSServerWithCert(PTLSCtxtWrapper pWrapper, LPCSTR 
 		unicodePassword = (LPWSTR)L"";
 	}
 
-	hStore = PFXImportCertStore(&pfxData, unicodePassword, CRYPT_USER_KEYSET | PKCS12_NO_PERSIST_KEY);
+	hStore = PFXImportCertStore(&pfxData, unicodePassword, CRYPT_USER_KEYSET);
 	if (hStore == NULL)
 	{
 		lastError = GetLastError();
