@@ -76,12 +76,38 @@ SECURITY_STATUS BeginTLSClientInternal(PTLSCtxtWrapper pWrapper, DWORD dwFlags)
 		&sc, NULL, NULL, pWrapper->pCredHandle, NULL);
 }
 
+PCCERT_CONTEXT findCertBySubjectAltName(LPCSTR serverName, HCERTSTORE hStore)
+{
+	PCCERT_CONTEXT pCertContext = NULL;
+	PCERT_INFO pCertInfo = NULL;
+	PCERT_EXTENSION pCertExtension = NULL;
+
+	while (pCertContext = CertEnumCertificatesInStore(hStore, pCertContext))
+	{
+		pCertInfo = pCertContext->pCertInfo;
+		for (DWORD i = 0; i < pCertInfo->cExtension; i++)
+		{
+			pCertExtension = &pCertInfo->rgExtension[i];
+
+			if (strcmp(pCertExtension->pszObjId, szOID_SUBJECT_ALT_NAME2) == 0)
+			{
+				
+			}
+		}
+	} 
+}
+
 PCCERT_CONTEXT getServerCertificate(LPCSTR serverName, HCERTSTORE hStore)
 {
 	PCCERT_CONTEXT pCertContext = NULL;
 
 	pCertContext = CertFindCertificateInStore(hStore, X509_ASN_ENCODING,
 		0, CERT_FIND_SUBJECT_STR_A, serverName, NULL);
+
+	if (!pCertContext)
+	{
+		pCertContext = findCertBySubjectAltName(serverName, hStore);
+	}
 
 	CertCloseStore(hStore, 0);
 
