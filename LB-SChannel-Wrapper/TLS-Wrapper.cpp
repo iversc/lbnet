@@ -209,6 +209,7 @@ DLL_API SECURITY_STATUS BeginTLSServerWithPFX(PTLSCtxtWrapper pWrapper, LPCSTR s
 		goto BTSWC_Cleanup;
 	}
 	pCertContext = getServerCertificate(serverName, hStore);
+	hStore = NULL;
 
 	if (pCertContext == NULL)
 	{

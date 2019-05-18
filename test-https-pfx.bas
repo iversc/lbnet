@@ -39,6 +39,7 @@
     print "Acquiring TLS credentials..."
     fileName$ = "CA-test\localhost\localhost.pfx"
     ret = BeginTLSServerWithPFX(hTLS, "localhost", fileName$, "")
+    print "BeginTLSServerWithPFX return - ";ret
     if ret <> 0 then
         print "BeginTLSServer() failed. ret - ";ret;" -- Error - ";GetError()
         Print dechex$( (abs(ret) XOR hexdec("FFFFFFFF")) + 1)
@@ -223,7 +224,7 @@ Function BeginTLSServerWithPFX(hTLS, serverName$, certFileName$, certPass$)
     serverName$ as ptr,_
     certFileName$ as ptr,_
     certPass$ as ptr,_
-    BeginTLSServerWithCert as long
+    BeginTLSServerWithPFX as long
 End Function
 
 Function SetTLSSocket(hTLS, sock)
@@ -312,9 +313,9 @@ Function GetError()
     CallDLL #LBSchannelWrapper, "GetError",_
     GetError as long
 
-    'if GetError < 0 then
-     '   GetError = (abs(GetError) XOR hexdec("FFFFFFFF")) + 1
-    'end if
+    if GetError < 0 then
+        GetError = (abs(GetError) XOR hexdec("FFFFFFFF")) + 1
+    end if
 End Function
 
 Function Send(sock, msg$, msgLen)
