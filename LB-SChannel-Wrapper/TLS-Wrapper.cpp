@@ -136,7 +136,7 @@ DLL_API SECURITY_STATUS BeginTLSServer(PTLSCtxtWrapper pWrapper, LPCSTR serverNa
 
 	pWrapper->pCertContext = serverCert;
 
-	pWrapper->isServerContext = true;
+	pWrapper->isServerContext = TRUE;
 
 	return AcquireCredentialsHandle(NULL, const_cast<LPSTR>(UNISP_NAME), SECPKG_CRED_INBOUND, NULL,
 		&sc, NULL, NULL, pWrapper->pCredHandle, NULL);
@@ -228,7 +228,7 @@ SECURITY_STATUS RunHandshakeLoop(PTLSCtxtWrapper pWrapper, BOOL read)
 		return SEC_E_INTERNAL_ERROR;
 	}
 
-	if (pWrapper->isServerContext && !pWrapper->acceptSuccess)
+	if (pWrapper->isServerContext && !read)
 	{
 		scRet = SEC_E_INCOMPLETE_MESSAGE;
 
@@ -236,11 +236,6 @@ SECURITY_STATUS RunHandshakeLoop(PTLSCtxtWrapper pWrapper, BOOL read)
 
 		CopyMemory(inpBuf, InExtraData->pvBuffer, InExtraData->cbBuffer);
 		bufCount = InExtraData->cbBuffer;
-
-		if (pWrapper->freeInitialData)
-		{
-			HeapFree(GetProcessHeap(), 0, InExtraData->pvBuffer);
-		}
 
 		InExtraData->BufferType = SECBUFFER_EMPTY;
 		InExtraData->cbBuffer = 0;
@@ -493,93 +488,18 @@ DLL_API SECURITY_STATUS __stdcall PerformServerHandshake(PTLSCtxtWrapper pWrappe
 {
 	if (FAILED(WrapperCheck(pWrapper))) return SEC_E_INVALID_HANDLE;
 
-	SecBufferDesc OutputBufDesc, InputBufDesc;
-	SecBuffer OutputBuf, InputBuf[2];
-	LPVOID readBuf = NULL;
-
-	OutputBufDesc.ulVersion = SECBUFFER_VERSION;
-	OutputBufDesc.cBuffers = 1;
-	OutputBufDesc.pBuffers = &OutputBuf;
-
-	OutputBuf.BufferType = SECBUFFER_TOKEN;
-	OutputBuf.cbBuffer = 0;
-	OutputBuf.pvBuffer = NULL;
+	SECURITY_STATUS scRet = NULL;
 
 	pWrapper->pCtxtHandle = new CtxtHandle();
-	DWORD dwSSPIOutFlags = 0;
 
-	InputBufDesc.ulVersion = SECBUFFER_VERSION;
-	InputBufDesc.cBuffers = 2;
-	InputBufDesc.pBuffers = InputBuf;
-
-	InputBuf[1].BufferType = SECBUFFER_EMPTY;
-	InputBuf[1].cbBuffer = 0;
-	InputBuf[1].pvBuffer = NULL;
-
-	InputBuf[0].BufferType = SECBUFFER_TOKEN;
-
-	if (bPerformInitialRead)
-	{
-		int received = 0;
-		if (!serverHandshakeDoInitialRead(pWrapper->sock, &readBuf, &received))
-		{
-			return SOCKET_ERROR;
-		}
-
-		InputBuf[0].pvBuffer = readBuf;
-		InputBuf[0].cbBuffer = received;
-	}
-	else
-	{
-		InputBuf[0].pvBuffer = initBuf;
-		InputBuf[0].cbBuffer = initBufSize;
-	}
-
-	DWORD dwAASCFlags = ASC_REQ_ALLOCATE_MEMORY | ASC_REQ_CONFIDENTIALITY | ASC_REQ_STREAM |
-		ASC_REQ_SEQUENCE_DETECT | ASC_REQ_REPLAY_DETECT | ASC_REQ_EXTENDED_ERROR;
-
-	SECURITY_STATUS scRet = AcceptSecurityContext(pWrapper->pCredHandle, NULL, &InputBufDesc,
-		dwAASCFlags, 0, pWrapper->pCtxtHandle, &OutputBufDesc, &dwSSPIOutFlags, NULL);
-
-	if (scRet == SEC_E_INCOMPLETE_MESSAGE)
+	if (!bPerformInitialRead)
 	{
 		pWrapper->ExtraData.BufferType = SECBUFFER_EXTRA;
-		pWrapper->ExtraData.cbBuffer = InputBuf[0].cbBuffer;
-		pWrapper->ExtraData.pvBuffer = InputBuf[0].pvBuffer;
-
-		pWrapper->freeInitialData = (readBuf != NULL);
+		pWrapper->ExtraData.cbBuffer = initBufSize;
+		pWrapper->ExtraData.pvBuffer = initBuf;
 	}
 
-	if (readBuf != NULL && scRet != SEC_E_INCOMPLETE_MESSAGE)
-	{
-		HeapFree(GetProcessHeap(), 0, readBuf);
-	}
-
-	if (scRet != SEC_I_CONTINUE_NEEDED && scRet != SEC_E_INCOMPLETE_MESSAGE)
-	{
-		lastError = scRet;
-		return scRet;
-	}
-
-
-	if (OutputBuf.cbBuffer != 0 && OutputBuf.pvBuffer != NULL && scRet != SEC_E_INCOMPLETE_MESSAGE)
-	{
-		//AcceptSecurityContext() isn't happy if you try to call it again with an existing context
-		//handle if it didn't return SEC_I_CONTINUE_NEEDED.  This lets us modify
-		//how we call it later.
-		pWrapper->acceptSuccess = TRUE;
-
-		int sent = send(pWrapper->sock, (LPCSTR)OutputBuf.pvBuffer, OutputBuf.cbBuffer, 0);
-		FreeContextBuffer(OutputBuf.pvBuffer);
-
-		if (sent == SOCKET_ERROR)
-		{
-			lastError = WSAGetLastError();		
-			return SEC_E_INTERNAL_ERROR;
-		}
-	}
-
-	scRet = RunHandshakeLoop(pWrapper, TRUE);
+	scRet = RunHandshakeLoop(pWrapper, bPerformInitialRead);
 
 	if (scRet != SEC_E_OK)
 	{
