@@ -76,38 +76,48 @@ SECURITY_STATUS BeginTLSClientInternal(PTLSCtxtWrapper pWrapper, DWORD dwFlags)
 		&sc, NULL, NULL, pWrapper->pCredHandle, NULL);
 }
 
-PCCERT_CONTEXT findCertBySubjectAltName(LPCSTR serverName, HCERTSTORE hStore)
+PCCERT_CONTEXT findFirstEndEntityCert(LPCSTR serverName, HCERTSTORE hStore)
 {
 	PCCERT_CONTEXT pCertContext = NULL;
 	PCERT_INFO pCertInfo = NULL;
 	PCERT_EXTENSION pCertExtension = NULL;
+	DWORD dataLen = 0;
+	LPVOID extData = NULL;
+	PCERT_BASIC_CONSTRAINTS2_INFO pBC2 = NULL;
 
 	while (pCertContext = CertEnumCertificatesInStore(hStore, pCertContext))
 	{
 		pCertInfo = pCertContext->pCertInfo;
-		for (DWORD i = 0; i < pCertInfo->cExtension; i++)
-		{
-			pCertExtension = &pCertInfo->rgExtension[i];
 
-			if (strcmp(pCertExtension->pszObjId, szOID_SUBJECT_ALT_NAME2) == 0)
+		pCertExtension = CertFindExtension(szOID_BASIC_CONSTRAINTS2, pCertInfo->cExtension, pCertInfo->rgExtension);
+		
+		if (pCertExtension)
+		{
+			if (!CryptDecodeObjectEx(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING, szOID_BASIC_CONSTRAINTS2,
+				pCertExtension->Value.pbData, pCertExtension->Value.cbData,
+				CRYPT_DECODE_NOCOPY_FLAG | CRYPT_DECODE_ALLOC_FLAG, NULL,
+				extData, &dataLen))
 			{
-				
+				return NULL;
 			}
+
+			pBC2 = (PCERT_BASIC_CONSTRAINTS2_INFO)extData;
+
+			if (!pBC2->fCA) return pCertContext;
 		}
 	} 
+
+	return NULL;
 }
 
-PCCERT_CONTEXT getServerCertificate(LPCSTR serverName, HCERTSTORE hStore)
+PCCERT_CONTEXT getServerCertificate(LPCSTR serverName, HCERTSTORE hStore, BOOL fromFile)
 {
 	PCCERT_CONTEXT pCertContext = NULL;
 
-	pCertContext = CertFindCertificateInStore(hStore, X509_ASN_ENCODING,
-		0, CERT_FIND_SUBJECT_STR_A, serverName, NULL);
+	DWORD findType = (strlen(serverName) == 0 && fromFile) ? CERT_FIND_HAS_PRIVATE_KEY : CERT_FIND_SUBJECT_STR_A;
 
-	if (!pCertContext)
-	{
-		pCertContext = findCertBySubjectAltName(serverName, hStore);
-	}
+	pCertContext = CertFindCertificateInStore(hStore, X509_ASN_ENCODING,
+		0, findType, serverName, NULL);
 
 	CertCloseStore(hStore, 0);
 
@@ -234,7 +244,7 @@ DLL_API SECURITY_STATUS BeginTLSServerWithPFX(PTLSCtxtWrapper pWrapper, LPCSTR s
 		scRet = SEC_E_INTERNAL_ERROR;
 		goto BTSWC_Cleanup;
 	}
-	pCertContext = getServerCertificate(serverName, hStore);
+	pCertContext = getServerCertificate(serverName, hStore, TRUE);
 	hStore = NULL;
 
 	if (pCertContext == NULL)
@@ -286,7 +296,7 @@ DLL_API SECURITY_STATUS BeginTLSServer(PTLSCtxtWrapper pWrapper, LPCSTR serverNa
 			}
 		}
 
-		pCertContext = getServerCertificate(serverName, hStore);
+		pCertContext = getServerCertificate(serverName, hStore, FALSE);
 	}
 
 	return BeginTLSServerInternal(pWrapper, pCertContext);

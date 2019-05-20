@@ -38,7 +38,7 @@
 
     print "Acquiring TLS credentials..."
     fileName$ = "CA-test\localhost\localhost.pfx"
-    ret = BeginTLSServerWithPFX(hTLS, "localhost", fileName$, "")
+    ret = BeginTLSServerWithPFX(hTLS, "", fileName$, "")
     print "BeginTLSServerWithPFX return - ";ret
     if ret <> 0 then
         print "BeginTLSServer() failed. ret - ";ret;" -- Error - ";GetError()
