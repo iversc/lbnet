@@ -113,11 +113,44 @@ PCCERT_CONTEXT findFirstEndEntityCert(LPCSTR serverName, HCERTSTORE hStore)
 PCCERT_CONTEXT getServerCertificate(LPCSTR serverName, HCERTSTORE hStore, BOOL fromFile)
 {
 	PCCERT_CONTEXT pCertContext = NULL;
+	DWORD findType = 0;
+	LPCSTR message = NULL;
 
-	DWORD findType = (strlen(serverName) == 0 && fromFile) ? CERT_FIND_HAS_PRIVATE_KEY : CERT_FIND_SUBJECT_STR_A;
+	//DWORD findType = (strlen(serverName) == 0 && fromFile) ? CERT_FIND_HAS_PRIVATE_KEY : CERT_FIND_SUBJECT_STR_A;
+
+	if (strlen(serverName) == 0 && fromFile)
+	{
+		findType = CERT_FIND_HAS_PRIVATE_KEY;
+		message = "Loading from file, grabbing first from private key\r\n";
+	}
+	else
+	{
+		findType = CERT_FIND_SUBJECT_STR_A;
+		message = "Loading cert by name\r\n";
+	}
 
 	pCertContext = CertFindCertificateInStore(hStore, X509_ASN_ENCODING,
 		0, findType, serverName, NULL);
+
+#ifdef _DEBUG
+	WriteDebugLog(message);
+
+	message = (pCertContext) ? "pCertContext not null\r\n" : "pCertContext is null\r\n";
+	WriteDebugLog(message);
+	
+	if (pCertContext)
+	{
+		LPVOID certDisplay = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, 256);
+		CertGetNameStringA(pCertContext, CERT_NAME_SIMPLE_DISPLAY_TYPE, 0, NULL,
+			(LPSTR)certDisplay, 256);
+
+		WriteDebugLog("Cert selected: ");
+		WriteDebugLog((LPCSTR)certDisplay);
+		WriteDebugLog("\r\n");
+		HeapFree(GetProcessHeap(), 0, certDisplay);
+	}
+
+#endif
 
 	CertCloseStore(hStore, 0);
 

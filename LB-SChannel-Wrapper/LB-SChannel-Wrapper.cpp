@@ -115,24 +115,6 @@ DLL_API SOCKET __stdcall CreateListenSocket(LPCSTR pService)
 		{
 			boundFlag = 1;
 		}
-		else
-		{
-#ifdef _DEBUG
-			char str[INET6_ADDRSTRLEN];
-			if (ptr->ai_family == AF_INET)
-			{
-				inet_ntop(AF_INET, &((PSOCKADDR_IN)ptr->ai_addr)->sin_addr, str, INET_ADDRSTRLEN);
-			}
-			else
-			{
-				inet_ntop(AF_INET6, &((PSOCKADDR_IN6)ptr->ai_addr)->sin6_addr, str, INET6_ADDRSTRLEN);
-			}
-
-			WriteDebugLog("bind() call failed. - ");
-			WriteDebugLog(str);
-			WriteDebugLog("\r\n");
-#endif
-		}
 	}
 
 	if (boundFlag = 0)
