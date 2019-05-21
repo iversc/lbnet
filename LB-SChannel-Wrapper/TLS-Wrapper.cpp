@@ -78,7 +78,7 @@ SECURITY_STATUS BeginTLSClientInternal(PTLSCtxtWrapper pWrapper, DWORD dwFlags)
 		&sc, NULL, NULL, pWrapper->pCredHandle, NULL);
 }
 
-PCCERT_CONTEXT findFirstEndEntityCert(LPCSTR serverName, HCERTSTORE hStore)
+PCCERT_CONTEXT findFirstEndEntityCert(HCERTSTORE hStore)
 {
 	PCCERT_CONTEXT pCertContext = NULL;
 	PCERT_INFO pCertInfo = NULL;
@@ -86,6 +86,7 @@ PCCERT_CONTEXT findFirstEndEntityCert(LPCSTR serverName, HCERTSTORE hStore)
 	DWORD dataLen = 0;
 	LPVOID extData = NULL;
 	PCERT_BASIC_CONSTRAINTS2_INFO pBC2 = NULL;
+	BOOL found = FALSE;
 
 	while (pCertContext = CertEnumCertificatesInStore(hStore, pCertContext))
 	{
@@ -98,14 +99,18 @@ PCCERT_CONTEXT findFirstEndEntityCert(LPCSTR serverName, HCERTSTORE hStore)
 			if (!CryptDecodeObjectEx(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING, szOID_BASIC_CONSTRAINTS2,
 				pCertExtension->Value.pbData, pCertExtension->Value.cbData,
 				CRYPT_DECODE_NOCOPY_FLAG | CRYPT_DECODE_ALLOC_FLAG, NULL,
-				extData, &dataLen))
+				&extData, &dataLen))
 			{
 				return NULL;
 			}
 
 			pBC2 = (PCERT_BASIC_CONSTRAINTS2_INFO)extData;
 
-			if (!pBC2->fCA) return pCertContext;
+			if (!pBC2->fCA) found = TRUE;
+			
+			LocalFree(extData);
+
+			if (found) return pCertContext;
 		}
 	} 
 
@@ -121,19 +126,20 @@ PCCERT_CONTEXT getServerCertificate(LPCSTR serverName, HCERTSTORE hStore, BOOL f
 
 	//DWORD findType = (strlen(serverName) == 0 && fromFile) ? CERT_FIND_HAS_PRIVATE_KEY : CERT_FIND_SUBJECT_STR_A;
 
-	if (strlen(serverName) == 0 && fromFile)
+	if(strlen(serverName) >  0)
 	{
-		findType = CERT_FIND_HAS_PRIVATE_KEY;
-		message = "Loading from file, grabbing first from private key\r\n";
-	}
-	else
-	{
-		findType = CERT_FIND_SUBJECT_STR_A;
 		message = "Loading cert by name\r\n";
+
+		pCertContext = CertFindCertificateInStore(hStore, X509_ASN_ENCODING,
+			0, CERT_FIND_SUBJECT_STR_A, serverName, NULL);
 	}
 
-	pCertContext = CertFindCertificateInStore(hStore, X509_ASN_ENCODING,
-		0, findType, serverName, NULL);
+	if (!pCertContext && fromFile)
+	{
+		message = "Loading from file, grabbing first end-entity cert\r\n";
+		pCertContext = findFirstEndEntityCert(hStore);
+	}
+
 
 #ifdef _DEBUG
 	if (!pCertContext)
