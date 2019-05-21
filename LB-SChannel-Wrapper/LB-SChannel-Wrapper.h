@@ -17,7 +17,7 @@ extern ULONG lastError;
 #ifdef _DEBUG
 extern HANDLE debugFile;
 
-void WriteDebugLog(LPCSTR message);
+void WriteDebugLog(LPCSTR function, LPCSTR message);
 #endif
 
 DLL_API BOOL __stdcall IsReadAvailable(SOCKET sock, int msTimeout);

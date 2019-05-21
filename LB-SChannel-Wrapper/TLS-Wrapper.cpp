@@ -123,12 +123,13 @@ PCCERT_CONTEXT getServerCertificate(LPCSTR serverName, HCERTSTORE hStore, BOOL f
 	DWORD findType = 0;
 	LPCSTR message = NULL;
 	DWORD certLastError = 0;
+	char buildMessage[100] = { 0 };
 
 	//DWORD findType = (strlen(serverName) == 0 && fromFile) ? CERT_FIND_HAS_PRIVATE_KEY : CERT_FIND_SUBJECT_STR_A;
 
 	if(strlen(serverName) >  0)
 	{
-		message = "Loading cert by name\r\n";
+		message = "Loading cert by name";
 
 		pCertContext = CertFindCertificateInStore(hStore, X509_ASN_ENCODING,
 			0, CERT_FIND_SUBJECT_STR_A, serverName, NULL);
@@ -136,7 +137,7 @@ PCCERT_CONTEXT getServerCertificate(LPCSTR serverName, HCERTSTORE hStore, BOOL f
 
 	if (!pCertContext && fromFile)
 	{
-		message = "Loading from file, grabbing first end-entity cert\r\n";
+		message = "Loading from file, grabbing first end-entity cert";
 		pCertContext = findFirstEndEntityCert(hStore);
 	}
 
@@ -147,10 +148,10 @@ PCCERT_CONTEXT getServerCertificate(LPCSTR serverName, HCERTSTORE hStore, BOOL f
 		certLastError = GetLastError();
 	}
 
-	WriteDebugLog(message);
+	WriteDebugLog("getServerCertificate",message);
 
-	message = (pCertContext) ? "pCertContext not null\r\n" : "pCertContext is null\r\n";
-	WriteDebugLog(message);
+	message = (pCertContext) ? "pCertContext not null" : "pCertContext is null";
+	WriteDebugLog("getServerCertificate",message);
 	
 	if (pCertContext)
 	{
@@ -158,17 +159,15 @@ PCCERT_CONTEXT getServerCertificate(LPCSTR serverName, HCERTSTORE hStore, BOOL f
 		CertGetNameStringA(pCertContext, CERT_NAME_SIMPLE_DISPLAY_TYPE, 0, NULL,
 			(LPSTR)certDisplay, 256);
 
-		WriteDebugLog("Cert selected: ");
-		WriteDebugLog((LPCSTR)certDisplay);
-		WriteDebugLog("\r\n");
+		snprintf(buildMessage, 100, "Cert selected: %s", (LPCSTR)certDisplay);
+		WriteDebugLog("getServerCertificate", buildMessage);
 		HeapFree(GetProcessHeap(), 0, certDisplay);
 	}
 	else
 	{
-		char numMessage[100] = { 0 };
 
-		snprintf(numMessage, 100, "GetLastError() return value - 0x%08x\r\n", certLastError);
-		WriteDebugLog(numMessage);
+		snprintf(buildMessage, 100, "GetLastError() return value - 0x%08x", certLastError);
+		WriteDebugLog("getServerCertificate", buildMessage);
 	}
 
 #endif
@@ -220,8 +219,7 @@ DLL_API SECURITY_STATUS BeginTLSServerWithPFX(PTLSCtxtWrapper pWrapper, LPCSTR s
 	SECURITY_STATUS scRet = SEC_E_OK;
 
 #ifdef _DEBUG
-	WriteDebugLog(fileName);
-	WriteDebugLog("\r\n");
+	WriteDebugLog("BeginTLSServerWithPFX",fileName);
 #endif
 
 
@@ -308,7 +306,7 @@ DLL_API SECURITY_STATUS BeginTLSServerWithPFX(PTLSCtxtWrapper pWrapper, LPCSTR s
 	}
 
 #ifdef _DEBUG
-	WriteDebugLog("All prep complete, calling BeginTLSServerInternal()...\n");
+	WriteDebugLog("BeginTLSServerWithPFX","All prep complete, calling BeginTLSServerInternal()...");
 #endif
 
 	scRet = BeginTLSServerInternal(pWrapper, pCertContext);
@@ -467,7 +465,7 @@ SECURITY_STATUS RunHandshakeLoop(PTLSCtxtWrapper pWrapper, BOOL read)
 
 
 #ifdef _DEBUG
-	WriteDebugLog("Entered RunHandshakeLoop\r\n");
+	WriteDebugLog("RunHandshakeLoop","Entered RunHandshakeLoop");
 #endif
 
 	while (scRet == SEC_I_CONTINUE_NEEDED ||
@@ -500,7 +498,7 @@ SECURITY_STATUS RunHandshakeLoop(PTLSCtxtWrapper pWrapper, BOOL read)
 		}
 
 #ifdef _DEBUG
-		WriteDebugLog("Received handshake data - processing message\r\n");
+		WriteDebugLog("RunHandshakeLoop","Received handshake data - processing message");
 #endif
 
 		InputBufDesc.cBuffers = 2;
@@ -544,10 +542,10 @@ SECURITY_STATUS RunHandshakeLoop(PTLSCtxtWrapper pWrapper, BOOL read)
 		}
 
 #ifdef _DEBUG
-		WriteDebugLog("InitializeSecurityContext() called.\r\n");
+		WriteDebugLog("RunHandshakeLoop", "ISC/ASC() called.");
 		if (scRet == SEC_E_INTERNAL_ERROR)
 		{
-			WriteDebugLog("    Internal error returned\r\n");
+			WriteDebugLog("RunHandshakeLoop", "ISC/ASC() Internal error returned");
 		}
 #endif
 
@@ -563,7 +561,25 @@ SECURITY_STATUS RunHandshakeLoop(PTLSCtxtWrapper pWrapper, BOOL read)
 			{
 				int sent = send(pWrapper->sock, (LPCSTR)OutputBuf[0].pvBuffer, OutputBuf[0].cbBuffer, 0);
 				FreeContextBuffer(OutputBuf[0].pvBuffer);
-				if (OutputBuf[1].pvBuffer != NULL)
+
+#ifdef _DEBUG
+				if (OutputBuf[1].BufferType == SECBUFFER_EXTRA)
+				{
+					WriteDebugLog("RunHandshakeLoop", "OutputBuf has extra data");
+					/*
+					char numBytes[100] = { 0 };
+					snprintf(numBytes, 100, "%d extra bytes found\r\n", OutputBuf[1].cbBuffer);
+
+					WriteDebugLog(numBytes);
+
+					if (OutputBuf[1].pvBuffer)
+					{
+						WriteDebugLog("pvBuffer is not null\r\n");
+					}*/
+				}
+#endif
+
+				if (OutputBuf[1].pvBuffer != NULL && OutputBuf[1].BufferType != SECBUFFER_EXTRA)
 				{
 					FreeContextBuffer(OutputBuf[1].pvBuffer);
 				}
@@ -592,16 +608,6 @@ SECURITY_STATUS RunHandshakeLoop(PTLSCtxtWrapper pWrapper, BOOL read)
 						return SEC_E_INTERNAL_ERROR;
 					}
 
-#ifdef _DEBUG
-					if (InputBuf[1].pvBuffer == NULL)
-					{
-						WriteDebugLog("InputBuf Extra NULL\r\n");
-					}
-					else
-					{
-						WriteDebugLog("InputBuf Extra NOTNULL\r\n");
-					}
-#endif
 					MoveMemory(pWrapper->ExtraData.pvBuffer,
 						inpBuf + (bufCount - InputBuf[1].cbBuffer),
 						InputBuf[1].cbBuffer);
@@ -617,18 +623,6 @@ SECURITY_STATUS RunHandshakeLoop(PTLSCtxtWrapper pWrapper, BOOL read)
 						return SEC_E_INTERNAL_ERROR;
 					}
 
-
-#ifdef _DEBUG
-					if (InputBuf[1].pvBuffer == NULL)
-					{
-						WriteDebugLog("InputBuf Extra NULL\r\n");
-					}
-					else
-					{
-						WriteDebugLog("InputBuf Extra NOTNULL\r\n");
-					}
-#endif
-
 					CopyMemory(newBuf, pWrapper->ExtraData.pvBuffer, pWrapper->ExtraData.cbBuffer);
 					CopyMemory((char*)newBuf + pWrapper->ExtraData.cbBuffer,
 						inpBuf + (bufCount - InputBuf[1].cbBuffer), InputBuf[1].cbBuffer);
@@ -638,6 +632,7 @@ SECURITY_STATUS RunHandshakeLoop(PTLSCtxtWrapper pWrapper, BOOL read)
 					pWrapper->ExtraData.cbBuffer += InputBuf[1].cbBuffer;
 				}
 			}
+
 
 			break;
 		}
@@ -649,17 +644,6 @@ SECURITY_STATUS RunHandshakeLoop(PTLSCtxtWrapper pWrapper, BOOL read)
 
 		if (InputBuf[1].BufferType == SECBUFFER_EXTRA)
 		{
-
-#ifdef _DEBUG
-			if (InputBuf[1].pvBuffer == NULL)
-			{
-				WriteDebugLog("InputBuf Extra NULL\r\n");
-			}
-			else
-			{
-				WriteDebugLog("InputBuf Extra NOTNULL\r\n");
-			}
-#endif
 			MoveMemory(inpBuf, inpBuf + (bufCount - InputBuf[1].cbBuffer), InputBuf[1].cbBuffer);
 			bufCount = InputBuf[1].cbBuffer;
 		}
@@ -959,6 +943,10 @@ DLL_API int __stdcall DecryptReceive(PTLSCtxtWrapper pWrapper, LPSTR buffer, ULO
 	PBYTE decryptBuf = NULL;
 	int retAmount = 0;
 
+#ifdef _DEBUG
+	WriteDebugLog("DecryptReceive", "Entered DecryptReceive()");
+#endif
+
 	//See if there's anything left to return from our last DecryptReceive() call
 	PSecBuffer pRemnant = &pWrapper->RemainingDecryptData;
 	if (pRemnant->BufferType != SECBUFFER_EMPTY)
@@ -1087,6 +1075,10 @@ DLL_API int __stdcall DecryptReceive(PTLSCtxtWrapper pWrapper, LPSTR buffer, ULO
 
 		if (scRet == SEC_I_RENEGOTIATE)
 		{
+#ifdef _DEBUG
+			WriteDebugLog("DecryptReceive", "Renegotiation request received.  Renegotiating handshake.");
+#endif
+
 			scRet = RunHandshakeLoop(pWrapper, FALSE);
 			if (scRet != SEC_E_OK)
 			{
@@ -1097,6 +1089,9 @@ DLL_API int __stdcall DecryptReceive(PTLSCtxtWrapper pWrapper, LPSTR buffer, ULO
 
 	} // while (TRUE)
 
+#ifdef _DEBUG
+	WriteDebugLog("DecryptReceive", "Leaving DecryptReceive()");
+#endif
 	return retAmount;
 }
 

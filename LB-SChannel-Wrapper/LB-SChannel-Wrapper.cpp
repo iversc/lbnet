@@ -9,6 +9,7 @@
 #include <WS2tcpip.h>
 #include <iphlpapi.h>
 #include <IcmpAPI.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include "LB-SChannel-Wrapper.h"
 
@@ -25,17 +26,20 @@ HANDLE debugFile = INVALID_HANDLE_VALUE;
 #endif
 
 #ifdef _DEBUG
-void WriteDebugLog(LPCSTR message)
+void WriteDebugLog(LPCSTR function, LPCSTR message)
 {
 	debugFile = CreateFile("wrapperdebug.log", FILE_APPEND_DATA, FILE_SHARE_READ, NULL,
 		OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 
 	if (debugFile != INVALID_HANDLE_VALUE)
 	{
-		DWORD msgLen = strlen(message);
+		DWORD msgLen = strlen(function) + strlen(message) + 10;
+		char * fullMsg = (char *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, msgLen);
+		DWORD outSize = snprintf(fullMsg, msgLen, "%s, %s\r\n", function, message);
 		DWORD written = 0;
-		WriteFile(debugFile, message, msgLen, &written, NULL);
+		WriteFile(debugFile, fullMsg, outSize, &written, NULL);
 		CloseHandle(debugFile);
+		HeapFree(GetProcessHeap(), 0, fullMsg);
 		debugFile = INVALID_HANDLE_VALUE;
 	}
 }
@@ -49,12 +53,19 @@ DLL_API ULONG __stdcall GetError()
 DLL_API int __stdcall InitSockets()
 {
 	//Initialize Winsock.
+#ifdef _DEBUG
+	WriteDebugLog("InitSockets", "DLL init");
+#endif
 	lastError = WSAStartup(MAKEWORD(2, 2), &wsaData);
 	return lastError;
 }
 
 DLL_API int __stdcall EndSockets()
 {
+#ifdef _DEBUG
+	WriteDebugLog("EndSockets", "DLL term");
+#endif
+
 	int iResult = WSACleanup();
 	lastError = WSAGetLastError();
 	return iResult;
