@@ -77,7 +77,7 @@
 
 [bufLoop]
     timer 0
-    ret = IsReadAvailable(hConn, 0)
+    ret = IsTLSReadAvailable(hTLS, 0)
     if ret = 0 then
         'No data waiting.  Stop and wait.
         timer 1, [bufLoop]

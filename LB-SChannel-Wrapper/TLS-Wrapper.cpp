@@ -137,7 +137,7 @@ PCCERT_CONTEXT getServerCertificate(LPCSTR serverName, HCERTSTORE hStore, BOOL f
 
 	if (!pCertContext && fromFile)
 	{
-		message = "Loading from file, grabbing first end-entity cert";
+		message = "Loading from file - grabbing first end-entity cert";
 		pCertContext = findFirstEndEntityCert(hStore);
 	}
 
@@ -306,7 +306,7 @@ DLL_API SECURITY_STATUS BeginTLSServerWithPFX(PTLSCtxtWrapper pWrapper, LPCSTR s
 	}
 
 #ifdef _DEBUG
-	WriteDebugLog("BeginTLSServerWithPFX","All prep complete, calling BeginTLSServerInternal()...");
+	WriteDebugLog("BeginTLSServerWithPFX","All prep complete - calling BeginTLSServerInternal()");
 #endif
 
 	scRet = BeginTLSServerInternal(pWrapper, pCertContext);
@@ -562,24 +562,7 @@ SECURITY_STATUS RunHandshakeLoop(PTLSCtxtWrapper pWrapper, BOOL read)
 				int sent = send(pWrapper->sock, (LPCSTR)OutputBuf[0].pvBuffer, OutputBuf[0].cbBuffer, 0);
 				FreeContextBuffer(OutputBuf[0].pvBuffer);
 
-#ifdef _DEBUG
-				if (OutputBuf[1].BufferType == SECBUFFER_EXTRA)
-				{
-					WriteDebugLog("RunHandshakeLoop", "OutputBuf has extra data");
-					/*
-					char numBytes[100] = { 0 };
-					snprintf(numBytes, 100, "%d extra bytes found\r\n", OutputBuf[1].cbBuffer);
-
-					WriteDebugLog(numBytes);
-
-					if (OutputBuf[1].pvBuffer)
-					{
-						WriteDebugLog("pvBuffer is not null\r\n");
-					}*/
-				}
-#endif
-
-				if (OutputBuf[1].pvBuffer != NULL && OutputBuf[1].BufferType != SECBUFFER_EXTRA)
+				if (OutputBuf[1].pvBuffer != NULL)
 				{
 					FreeContextBuffer(OutputBuf[1].pvBuffer);
 				}
@@ -986,8 +969,6 @@ DLL_API int __stdcall DecryptReceive(PTLSCtxtWrapper pWrapper, LPSTR buffer, ULO
 		pExtra->cbBuffer = 0;
 		HeapFree(GetProcessHeap(), 0, pExtra->pvBuffer);
 		pExtra->pvBuffer = NULL;
-
-		scRet = SEC_E_INCOMPLETE_MESSAGE;
 	}
 
 	while (TRUE)
@@ -1041,6 +1022,10 @@ DLL_API int __stdcall DecryptReceive(PTLSCtxtWrapper pWrapper, LPSTR buffer, ULO
 
 		if (pExtraBuf)
 		{
+#ifdef _DEBUG
+			WriteDebugLog("DecryptReceive", "Extra non-decrypted data available");
+#endif
+
 			pExtra->BufferType = SECBUFFER_EXTRA;
 			pExtra->cbBuffer = pExtraBuf->cbBuffer;
 			pExtra->pvBuffer = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, pExtra->cbBuffer);
@@ -1056,6 +1041,9 @@ DLL_API int __stdcall DecryptReceive(PTLSCtxtWrapper pWrapper, LPSTR buffer, ULO
 
 			if (length > bufLen)
 			{
+#ifdef _DEBUG
+				WriteDebugLog("DecryptReceive", "Extra decrypted data available");
+#endif
 				int diff = length - bufLen;
 				pRemnant->BufferType = SECBUFFER_DATA;
 				pRemnant->cbBuffer = diff;
@@ -1102,6 +1090,9 @@ DLL_API BOOL __stdcall IsTLSReadAvailable(PTLSCtxtWrapper pWrapper, int msTimeou
 		lastError = SEC_E_INVALID_HANDLE;
 		return SOCKET_ERROR;
 	}
+
+	if (pWrapper->ExtraData.BufferType != SECBUFFER_EMPTY) return TRUE;
+	if (pWrapper->RemainingDecryptData.BufferType != SECBUFFER_EMPTY) return TRUE;
 
 	return IsReadAvailable(pWrapper->sock, msTimeout);
 }
