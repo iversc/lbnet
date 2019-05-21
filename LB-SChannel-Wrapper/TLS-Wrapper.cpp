@@ -1,5 +1,7 @@
 #include "stdafx.h"
 #include "LB-SChannel-Wrapper.h"
+#include <stdio.h>
+#include <stdlib.h>
 
 SECURITY_STATUS WrapperCheck(PTLSCtxtWrapper pWrapper)
 {
@@ -115,6 +117,7 @@ PCCERT_CONTEXT getServerCertificate(LPCSTR serverName, HCERTSTORE hStore, BOOL f
 	PCCERT_CONTEXT pCertContext = NULL;
 	DWORD findType = 0;
 	LPCSTR message = NULL;
+	DWORD certLastError = 0;
 
 	//DWORD findType = (strlen(serverName) == 0 && fromFile) ? CERT_FIND_HAS_PRIVATE_KEY : CERT_FIND_SUBJECT_STR_A;
 
@@ -133,6 +136,11 @@ PCCERT_CONTEXT getServerCertificate(LPCSTR serverName, HCERTSTORE hStore, BOOL f
 		0, findType, serverName, NULL);
 
 #ifdef _DEBUG
+	if (!pCertContext)
+	{
+		certLastError = GetLastError();
+	}
+
 	WriteDebugLog(message);
 
 	message = (pCertContext) ? "pCertContext not null\r\n" : "pCertContext is null\r\n";
@@ -148,6 +156,13 @@ PCCERT_CONTEXT getServerCertificate(LPCSTR serverName, HCERTSTORE hStore, BOOL f
 		WriteDebugLog((LPCSTR)certDisplay);
 		WriteDebugLog("\r\n");
 		HeapFree(GetProcessHeap(), 0, certDisplay);
+	}
+	else
+	{
+		char numMessage[100] = { 0 };
+
+		snprintf(numMessage, 100, "GetLastError() return value - 0x%08x\r\n", certLastError);
+		WriteDebugLog(numMessage);
 	}
 
 #endif
