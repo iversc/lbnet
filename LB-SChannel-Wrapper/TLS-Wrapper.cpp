@@ -1080,6 +1080,8 @@ DLL_API int __stdcall DecryptReceive(PTLSCtxtWrapper pWrapper, LPSTR buffer, ULO
 #ifdef _DEBUG
 	WriteDebugLog("DecryptReceive", "Leaving DecryptReceive()");
 #endif
+
+	HeapFree(GetProcessHeap(), 0, decryptBuf);
 	return retAmount;
 }
 
