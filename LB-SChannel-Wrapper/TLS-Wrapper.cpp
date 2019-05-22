@@ -803,6 +803,7 @@ DLL_API int __stdcall DecryptReceive(PTLSCtxtWrapper pWrapper, LPSTR buffer, ULO
 
 	} // while (TRUE)
 
+	HeapFree(GetProcessHeap(), 0, decryptBuf);
 	return retAmount;
 }
 
