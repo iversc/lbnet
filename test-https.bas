@@ -231,6 +231,7 @@ End Function
 
 Function DestroyTLSContext(hTLS)
     CallDLL #LBSchannelWrapper, "DestroyTLSContext",_
+    hTLS as ulong,_
     DestroyTLSContext as long
 End Function
 
