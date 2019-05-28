@@ -80,7 +80,7 @@
 [handshakeLoop]
     a = SetTLSSocket(hTLS, hConn)
 
-    ret = PerformServerHandshake(hTLS, 0, buf$, byteCount)
+    ret = PerformServerHandshake(hTLS, 1, "", 0)
     if ret <> 0 then
         print "PerformServerHandshake() failed. - ";ret; " - Error: ";dechex$(GetError())
         Print dechex$( (abs(ret) XOR hexdec("FFFFFFFF")) + 1)
@@ -280,6 +280,7 @@ End Function
 
 Function DestroyTLSContext(hTLS)
     CallDLL #LBSchannelWrapper, "DestroyTLSContext",_
+    hTLS as ulong,_
     DestroyTLSContext as long
 End Function
 
