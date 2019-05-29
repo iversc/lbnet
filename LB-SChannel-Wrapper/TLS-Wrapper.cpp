@@ -869,6 +869,9 @@ DLL_API int __stdcall DecryptReceive(PTLSCtxtWrapper pWrapper, LPSTR buffer, ULO
 			pRemnant->BufferType = SECBUFFER_EMPTY;
 		}
 
+#ifdef _DEBUG
+		WriteDebugLog("DecryptReceive", "Leaving DecryptReceive() - previous decrypted data");
+#endif
 		return min;
 	}
 
@@ -882,6 +885,9 @@ DLL_API int __stdcall DecryptReceive(PTLSCtxtWrapper pWrapper, LPSTR buffer, ULO
 	PSecBuffer pExtra = &pWrapper->ExtraData;
 	if (pExtra->BufferType != SECBUFFER_EMPTY)
 	{
+#ifdef _DEBUG
+		WriteDebugLog("DecryptReceive", "Copying leftover encrypted data to input buffer");
+#endif
 		CopyMemory(decryptBuf, pExtra->pvBuffer, pExtra->cbBuffer);
 		decryptBufUsed = pExtra->cbBuffer;
 
@@ -927,12 +933,17 @@ DLL_API int __stdcall DecryptReceive(PTLSCtxtWrapper pWrapper, LPSTR buffer, ULO
 
 		if (scRet == SEC_I_CONTEXT_EXPIRED) break;  //Server signalled end-of-session
 		if (scRet != SEC_E_OK && scRet != SEC_I_RENEGOTIATE
-			&& scRet != SEC_I_CONTEXT_EXPIRED)
+			&& scRet != SEC_I_CONTEXT_EXPIRED && scRet != SEC_E_INCOMPLETE_MESSAGE)
 		{
 			lastError = scRet;
 			HeapFree(GetProcessHeap(), 0, decryptBuf);
+#ifdef _DEBUG
+			WriteDebugLog("DecryptReceive", "Leaving DecryptReceive() - Returning error");
+#endif
 			return SOCKET_ERROR;
 		}
+
+		if (scRet == SEC_E_INCOMPLETE_MESSAGE) continue;
 
 		for (int i = 0; i < 4; i++)
 		{
