@@ -234,7 +234,7 @@ Function SetTLSSocket(hTLS, sock)
     SetTLSSock as long
 End Function
 
-Function PerformClientHandshake(hTLS, servernName$)
+Function PerformClientHandshake(hTLS, serverName$)
     CallDLL #LBSchannelWrapper, "PerformClientHandshake",_
     hTLS as ulong,_
     serverName$ as ptr,_
