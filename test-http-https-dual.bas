@@ -204,7 +204,7 @@
         content$ = "404 File Not Found"
         lenContent = len(content$)
     else
-        open "test.html" for input as #file
+        open "output-4.html" for input as #file
         content$ = input$(#file, lof(#file))
         close #file
 

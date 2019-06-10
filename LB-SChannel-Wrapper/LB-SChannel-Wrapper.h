@@ -5,8 +5,7 @@
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 
-#define DLL_API EXTERN_C __declspec(dllexport) 
-#define cbMaxMessage 12000
+#define DLL_API EXTERN_C __declspec(dllexport)
 #define IO_BUFFER_SIZE  0x10000
 
 #define TLS_Wrapper_Version 10

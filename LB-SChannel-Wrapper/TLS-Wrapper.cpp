@@ -765,62 +765,90 @@ DLL_API int __stdcall EncryptSend(PTLSCtxtWrapper pWrapper, LPCSTR message, ULON
 	}
 
 	PSecPkgContext_StreamSizes sizes = &pWrapper->sizes;
-	int messageSize = msgLen;
+	int messageSize = 0;
+	int sentBytes = 0;
 
 	int maxMessageBlobSize = sizes->cbHeader + sizes->cbMaximumMessage +
 		sizes->cbTrailer;
 
-	PBYTE sendBuf = (PBYTE)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, maxMessageBlobSize);
-	if (sendBuf == NULL)
+#ifdef _DEBUG
+	char dMsg[100];
+
+	snprintf(dMsg, 100, "maxMessageBlobSize: %d", maxMessageBlobSize);
+	WriteDebugLog("EncryptSend", dMsg);
+
+	snprintf(dMsg, 100, "cbMaximumMessage: %d", sizes->cbMaximumMessage);
+	WriteDebugLog("EncryptSend", dMsg);
+
+	snprintf(dMsg, 100, "Incoming message size: %d", msgLen);
+	WriteDebugLog("EncryptSend", dMsg);
+#endif
+
+	for (ULONG i = 0; i < msgLen; i += sizes->cbMaximumMessage)
 	{
-		lastError = SEC_E_INSUFFICIENT_MEMORY;
-		return SOCKET_ERROR;
-	}
+		messageSize = min(sizes->cbMaximumMessage, msgLen - i);
 
-	MoveMemory(sendBuf + sizes->cbHeader, message, messageSize);
+		PBYTE sendBuf = (PBYTE)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizes->cbHeader + 
+			messageSize + sizes->cbTrailer);
 
-	SecBufferDesc MessageDesc;
-	SecBuffer MsgBuffer[4];
+		if (sendBuf == NULL)
+		{
+			lastError = SEC_E_INSUFFICIENT_MEMORY;
+			return SOCKET_ERROR;
+		}
+		
+#ifdef _DEBUG
+		snprintf(dMsg, 100, "Chunk size: %d", messageSize);
+		WriteDebugLog("EncryptSend", dMsg);
+#endif
+		MoveMemory(sendBuf + sizes->cbHeader, message + i, messageSize);
 
-	MsgBuffer[0].BufferType = SECBUFFER_STREAM_HEADER;
-	MsgBuffer[0].cbBuffer = sizes->cbHeader;
-	MsgBuffer[0].pvBuffer = sendBuf;
+		SecBufferDesc MessageDesc;
+		SecBuffer MsgBuffer[4];
 
-	MsgBuffer[1].BufferType = SECBUFFER_DATA;
-	MsgBuffer[1].pvBuffer = sendBuf + sizes->cbHeader;
-	MsgBuffer[1].cbBuffer = messageSize;
+		MsgBuffer[0].BufferType = SECBUFFER_STREAM_HEADER;
+		MsgBuffer[0].cbBuffer = sizes->cbHeader;
+		MsgBuffer[0].pvBuffer = sendBuf;
 
-	MsgBuffer[2].BufferType = SECBUFFER_STREAM_TRAILER;
-	MsgBuffer[2].cbBuffer = sizes->cbTrailer;
-	MsgBuffer[2].pvBuffer = sendBuf + sizes->cbHeader + messageSize;
+		MsgBuffer[1].BufferType = SECBUFFER_DATA;
+		MsgBuffer[1].pvBuffer = sendBuf + sizes->cbHeader;
+		MsgBuffer[1].cbBuffer = messageSize;
 
-	MsgBuffer[3].BufferType = SECBUFFER_EMPTY;
-	MsgBuffer[3].cbBuffer = 0;
-	MsgBuffer[3].pvBuffer = NULL;
+		MsgBuffer[2].BufferType = SECBUFFER_STREAM_TRAILER;
+		MsgBuffer[2].cbBuffer = sizes->cbTrailer;
+		MsgBuffer[2].pvBuffer = sendBuf + sizes->cbHeader + messageSize;
 
-	MessageDesc.cBuffers = 4;
-	MessageDesc.ulVersion = SECBUFFER_VERSION;
-	MessageDesc.pBuffers = MsgBuffer;
+		MsgBuffer[3].BufferType = SECBUFFER_EMPTY;
+		MsgBuffer[3].cbBuffer = 0;
+		MsgBuffer[3].pvBuffer = NULL;
 
-	SECURITY_STATUS scRet = EncryptMessage(pWrapper->pCtxtHandle, 0, &MessageDesc, 0);
-	if (FAILED(scRet))
-	{
+		MessageDesc.cBuffers = 4;
+		MessageDesc.ulVersion = SECBUFFER_VERSION;
+		MessageDesc.pBuffers = MsgBuffer;
+
+		SECURITY_STATUS scRet = EncryptMessage(pWrapper->pCtxtHandle, 0, &MessageDesc, 0);
+		if (FAILED(scRet))
+		{
+			HeapFree(GetProcessHeap(), 0, sendBuf);
+			lastError = scRet;
+			return SOCKET_ERROR;
+		}
+
+		int sent = send(pWrapper->sock, (LPSTR)sendBuf,
+			MsgBuffer[0].cbBuffer + MsgBuffer[1].cbBuffer + MsgBuffer[2].cbBuffer, 0);
+		if (sent == SOCKET_ERROR)
+		{
+			lastError = WSAGetLastError();
+			HeapFree(GetProcessHeap(), 0, sendBuf);
+			return SOCKET_ERROR;
+		}
+
+		sentBytes += sent;
+
 		HeapFree(GetProcessHeap(), 0, sendBuf);
-		lastError = scRet;
-		return SOCKET_ERROR;
 	}
 
-	int sent = send(pWrapper->sock, (LPSTR)sendBuf,
-		MsgBuffer[0].cbBuffer + MsgBuffer[1].cbBuffer + MsgBuffer[2].cbBuffer, 0);
-	if (sent == SOCKET_ERROR)
-	{
-		lastError = WSAGetLastError();
-		HeapFree(GetProcessHeap(), 0, sendBuf);
-		return SOCKET_ERROR;
-	}
-
-	HeapFree(GetProcessHeap(), 0, sendBuf);
-	return sent;
+	return sentBytes;
 }
 
 DLL_API int __stdcall DecryptReceive(PTLSCtxtWrapper pWrapper, LPSTR buffer, ULONG bufLen)

@@ -99,7 +99,7 @@
     else
         ret = IsReadAvailable(hConn, 0)
     end if
-    
+
     if ret = 0 then
         'No data waiting.  Stop and wait.
         timer 1, [bufLoop]
@@ -166,7 +166,7 @@
 
     responseHeaders$ = responseHeaders$ + "X-Request-Secure: " + secure$ + crlf$
 
-    open "test.html" for input as #file
+    open "output-4.html" for input as #file
     content$ = input$(#file, lof(#file))
     close #file
 
@@ -186,14 +186,28 @@
     print
     print response$
 
+    print "Closing data socket..."
     a = CloseSocket(hConn)
+
+    print "Destroying TLS context..."
     a = DestroyTLSContext(hTLS)
 
 [doSockEnd]
+    print "Closing server socket..."
     a = CloseSocket(hServSock)
 
 [doEnd]
+    print "Closing TLS DLL..."
     call CloseTLSDLL
+    
+    print "Performing wait..."
+    
+    timer 1000, [asdffdsa]
+    wait
+[asdffdsa]
+    timer 0
+    
+    print "Ending program..."
 
 Function randNum(min, max)
     randNum = int(rnd(1) * max) + min
