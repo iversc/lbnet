@@ -27,12 +27,15 @@
     end if
 
     Print "Attempting to accept connection..."
-    hConn = AcceptConnection(hServSock)
+    bufLen = 46 'enough to hold an IPv6 address plus null-terminating character
+    buf$ = space$(bufLen)
+    hConn = AcceptConnection(hServSock, buf$, bufLen)
     if hConn = -1 then
         print "AcceptConnection() failed. - ";GetError()
         goto [doSockEnd]
     end if
 
+    print "IP Address: ";trim$(buf$)
     print "Creating TLS context..."
     hTLS = CreateTLSContext()
 
@@ -67,7 +70,7 @@
 
     a = SetTLSSocket(hTLS, hConn)
 
-    ret = PerformServerHandshake(hTLS, 1, "", 0)
+    ret = PerformServerHandshake(hTLS, 1, "", 0, 5000)
     if ret <> 0 then
         print "PerformServerHandshake() failed. - ";ret; " - Error: ";dechex$(GetError())
         a = CloseSocket(hConn)
@@ -86,7 +89,7 @@
 
     bufLen = 512
     buf$ = space$(bufLen)
-    num = DecryptReceive(hTLS, buf$, bufLen)
+    num = DecryptReceive(hTLS, buf$, bufLen, 5000)
     If num = -1 then
         Print "Socket error occurred. - ";GetError()
         a = CloseSocket(hConn)
@@ -234,19 +237,21 @@ Function SetTLSSocket(hTLS, sock)
     SetTLSSock as long
 End Function
 
-Function PerformClientHandshake(hTLS, serverName$)
+Function PerformClientHandshake(hTLS, serverName$, msTimeout)
     CallDLL #LBSchannelWrapper, "PerformClientHandshake",_
     hTLS as ulong,_
     serverName$ as ptr,_
+    msTimeout as long,_
     PerformClientHandshake as long
 End Function
 
-Function PerformServerHandshake(hTLS, doInitialRead, initBuf$, initBufSize)
+Function PerformServerHandshake(hTLS, doInitialRead, initBuf$, initBufSize, msTimeout)
     CallDLL #LBSchannelWrapper, "PerformServerHandshake",_
     hTLS as ulong,_
     doInitialRead as long,_
     initBuf$ as ptr,_
     initBufSize as long,_
+    msTimeout as long,_
     PerformServerHandshake as long
 End Function
 
@@ -256,9 +261,11 @@ Function CreateListenSocket(pService$)
     CreateListenSocket as ulong
 End Function
 
-Function AcceptConnection(ServerSocket)
+Function AcceptConnection(ServerSocket, byref buf$, bufLen)
     CallDLL #LBSchannelWrapper, "AcceptConnection",_
     ServerSocket as ulong,_
+    buf$ as ptr,_
+    bufLen as long,_
     AcceptConnection as ulong
 End Function
 
@@ -342,11 +349,12 @@ Function Receive(sock, byref buf$, bufLen)
     Receive as long
 End Function
 
-Function DecryptReceive(hTLS, byref buf$, bufLen)
+Function DecryptReceive(hTLS, byref buf$, bufLen, msTimeout)
     CallDLL #LBSchannelWrapper, "DecryptReceive",_
     hTLS as ulong,_
     buf$ as ptr,_
     bufLen as long,_
+    msTimeout as long,_
     DecryptReceive as long
 End Function
 
