@@ -422,7 +422,7 @@ DFScleanup:
 	return scRet;
 }
 
-SECURITY_STATUS RunHandshakeLoop(PTLSCtxtWrapper pWrapper, BOOL read)
+SECURITY_STATUS RunHandshakeLoop(PTLSCtxtWrapper pWrapper, BOOL read, ULONG msTimeout)
 {
 	if (FAILED(WrapperCheck(pWrapper))) return SEC_E_INVALID_HANDLE;
 
@@ -434,6 +434,7 @@ SECURITY_STATUS RunHandshakeLoop(PTLSCtxtWrapper pWrapper, BOOL read)
 	DWORD dwFlagsRet = 0;
 	PCtxtHandle acceptTemp = NULL;
 	SECURITY_STATUS scRet = 0;
+	TIMEVAL tv = TIMEVAL();
 
 	if (inpBuf == NULL)
 	{
@@ -470,22 +471,50 @@ SECURITY_STATUS RunHandshakeLoop(PTLSCtxtWrapper pWrapper, BOOL read)
 		{
 			if (read)
 			{
-				ULONG size = recv(pWrapper->sock, inpBuf + bufCount, IO_BUFFER_SIZE - bufCount, 0);
+				if (msTimeout > 0)
+				{
+					tv.tv_sec = msTimeout / 1000;
+					tv.tv_usec = (msTimeout % 1000) * 1000;
+				}
+				else
+				{
+					//default timeout of 10 seconds
+					tv.tv_sec = 10;
+					tv.tv_usec = 0;
+				}
 
-				if (size == SOCKET_ERROR)
+				fd_set in_set;
+				FD_ZERO(&in_set);
+				FD_SET(pWrapper->sock, &in_set);
+
+				// select the set
+				int cnt = select(pWrapper->sock + 1, &in_set, NULL, NULL, &tv);
+
+				if (FD_ISSET(pWrapper->sock, &in_set))
+				{
+					ULONG size = recv(pWrapper->sock, inpBuf + bufCount, IO_BUFFER_SIZE - bufCount, 0);
+
+					if (size == SOCKET_ERROR)
+					{
+						lastError = WSAGetLastError();
+						scRet = SEC_E_INTERNAL_ERROR;
+						break;
+					}
+					if (size == 0)
+					{
+						lastError = WSAEDISCON;
+						scRet = SEC_E_INTERNAL_ERROR;
+						break;
+					}
+
+					bufCount += size;
+				}
+				else
 				{
 					lastError = WSAGetLastError();
 					scRet = SEC_E_INTERNAL_ERROR;
 					break;
 				}
-				if (size == 0)
-				{
-					lastError = WSAEDISCON;
-					scRet = SEC_E_INTERNAL_ERROR;
-					break;
-				}
-
-				bufCount += size;
 			}
 			else {
 				read = TRUE;
@@ -665,7 +694,7 @@ BOOL serverHandshakeDoInitialRead(SOCKET s, LPVOID * buffer, int * bufSize)
 	return true;
 }
 
-DLL_API SECURITY_STATUS __stdcall PerformServerHandshake(PTLSCtxtWrapper pWrapper, BOOL bPerformInitialRead, LPSTR initBuf, ULONG initBufSize)
+DLL_API SECURITY_STATUS __stdcall PerformServerHandshake(PTLSCtxtWrapper pWrapper, BOOL bPerformInitialRead, LPSTR initBuf, ULONG initBufSize, ULONG msTimeout)
 {
 	if (FAILED(WrapperCheck(pWrapper))) return SEC_E_INVALID_HANDLE;
 
@@ -680,7 +709,7 @@ DLL_API SECURITY_STATUS __stdcall PerformServerHandshake(PTLSCtxtWrapper pWrappe
 		pWrapper->ExtraData.pvBuffer = initBuf;
 	}
 
-	scRet = RunHandshakeLoop(pWrapper, bPerformInitialRead);
+	scRet = RunHandshakeLoop(pWrapper, bPerformInitialRead, msTimeout);
 
 	if (scRet != SEC_E_OK)
 	{
@@ -696,7 +725,7 @@ DLL_API SECURITY_STATUS __stdcall PerformServerHandshake(PTLSCtxtWrapper pWrappe
 	return scRet;
 }
 
-DLL_API SECURITY_STATUS __stdcall PerformClientHandshake(PTLSCtxtWrapper pWrapper, LPSTR pServerName)
+DLL_API SECURITY_STATUS __stdcall PerformClientHandshake(PTLSCtxtWrapper pWrapper, LPSTR pServerName, ULONG msTimeout)
 {
 	if (FAILED(WrapperCheck(pWrapper))) return SEC_E_INVALID_HANDLE;
 
@@ -737,7 +766,7 @@ DLL_API SECURITY_STATUS __stdcall PerformClientHandshake(PTLSCtxtWrapper pWrappe
 		FreeContextBuffer(OutputBuf.pvBuffer);
 	}
 
-	scRet = RunHandshakeLoop(pWrapper, TRUE);
+	scRet = RunHandshakeLoop(pWrapper, TRUE, msTimeout);
 
 	if (scRet != SEC_E_OK)
 	{
@@ -851,7 +880,7 @@ DLL_API int __stdcall EncryptSend(PTLSCtxtWrapper pWrapper, LPCSTR message, ULON
 	return sentBytes;
 }
 
-DLL_API int __stdcall DecryptReceive(PTLSCtxtWrapper pWrapper, LPSTR buffer, ULONG bufLen)
+DLL_API int __stdcall DecryptReceive(PTLSCtxtWrapper pWrapper, LPSTR buffer, ULONG bufLen, ULONG msTimeout)
 {
 	if (FAILED(WrapperCheck(pWrapper)))
 	{
@@ -1026,7 +1055,7 @@ DLL_API int __stdcall DecryptReceive(PTLSCtxtWrapper pWrapper, LPSTR buffer, ULO
 			WriteDebugLog("DecryptReceive", "Renegotiation request received.  Renegotiating handshake.");
 #endif
 
-			scRet = RunHandshakeLoop(pWrapper, FALSE);
+			scRet = RunHandshakeLoop(pWrapper, FALSE, msTimeout);
 			if (scRet != SEC_E_OK)
 			{
 				HeapFree(GetProcessHeap(), 0, decryptBuf);
