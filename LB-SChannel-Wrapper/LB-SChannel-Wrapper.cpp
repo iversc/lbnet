@@ -146,9 +146,24 @@ DLL_API SOCKET __stdcall CreateListenSocket(LPCSTR pService)
 	return s;
 }
 
-DLL_API SOCKET __stdcall AcceptConnection(SOCKET sock)
+DLL_API SOCKET __stdcall AcceptConnection(SOCKET sock, LPSTR buffer, ULONG bufLen)
 {
-	SOCKET ClientSocket = accept(sock, NULL, NULL);
+	socklen_t len;
+	struct sockaddr_storage addr;
+
+	len = sizeof addr;
+	SOCKET ClientSocket = accept(sock, (struct sockaddr*)&addr, &len);
+
+	// deal with both IPv4 and IPv6:
+	if (addr.ss_family == AF_INET) {
+		struct sockaddr_in *s = (struct sockaddr_in *)&addr;
+		inet_ntop(AF_INET, &s->sin_addr, buffer, bufLen);
+	}
+	else { // AF_INET6
+		struct sockaddr_in6 *s = (struct sockaddr_in6 *)&addr;
+		inet_ntop(AF_INET6, &s->sin6_addr, buffer, bufLen);
+	}
+
 	if (ClientSocket == SOCKET_ERROR)
 	{
 		lastError = WSAGetLastError();
