@@ -1,4 +1,4 @@
-LIBRARY LB-SChannel-Wrapper
+LIBRARY LBNet
 EXPORTS
 	BeginTLSClientNoValidation
 	DecryptReceive

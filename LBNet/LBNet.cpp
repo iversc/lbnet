@@ -11,7 +11,7 @@
 #include <IcmpAPI.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "LB-SChannel-Wrapper.h"
+#include "LBNet.h"
 
 #pragma comment(lib, "Secur32.lib")
 #pragma comment(lib, "Ws2_32.lib")
@@ -45,12 +45,12 @@ void WriteDebugLog(LPCSTR function, LPCSTR message)
 }
 #endif
 
-DLL_API ULONG __stdcall GetError()
+LBNET_API ULONG __stdcall GetError()
 {
 	return lastError;
 }
 
-DLL_API int __stdcall InitSockets()
+LBNET_API int __stdcall InitSockets()
 {
 	//Initialize Winsock.
 #ifdef _DEBUG
@@ -60,7 +60,7 @@ DLL_API int __stdcall InitSockets()
 	return lastError;
 }
 
-DLL_API int __stdcall EndSockets()
+LBNET_API int __stdcall EndSockets()
 {
 #ifdef _DEBUG
 	WriteDebugLog("EndSockets", "DLL term");
@@ -71,7 +71,7 @@ DLL_API int __stdcall EndSockets()
 	return iResult;
 }
 
-DLL_API SOCKET __stdcall CreateListenSocket(LPCSTR pService)
+LBNET_API SOCKET __stdcall CreateListenSocket(LPCSTR pService)
 {
 	int boundFlag = 0;
 
@@ -146,7 +146,7 @@ DLL_API SOCKET __stdcall CreateListenSocket(LPCSTR pService)
 	return s;
 }
 
-DLL_API SOCKET __stdcall AcceptConnection(SOCKET sock, LPSTR buffer, ULONG bufLen)
+LBNET_API SOCKET __stdcall AcceptConnection(SOCKET sock, LPSTR buffer, ULONG bufLen)
 {
 	socklen_t len;
 	struct sockaddr_storage addr;
@@ -174,7 +174,7 @@ DLL_API SOCKET __stdcall AcceptConnection(SOCKET sock, LPSTR buffer, ULONG bufLe
 	return ClientSocket;
 }
 
-DLL_API SOCKET __stdcall Connect(LPCSTR pHost, LPCSTR pService, ULONG msTimeout)
+LBNET_API SOCKET __stdcall Connect(LPCSTR pHost, LPCSTR pService, ULONG msTimeout)
 {
 	TIMEVAL tv = TIMEVAL();
 	//Make sure we were actually passed strings to use.
@@ -322,7 +322,7 @@ DLL_API SOCKET __stdcall Connect(LPCSTR pHost, LPCSTR pService, ULONG msTimeout)
 	return INVALID_SOCKET;
 }
 
-DLL_API int __stdcall Send(SOCKET s, LPCSTR buffer, ULONG bufLen)
+LBNET_API int __stdcall Send(SOCKET s, LPCSTR buffer, ULONG bufLen)
 {
 	int retVal = send(s, buffer, bufLen, 0);
 	if (retVal == SOCKET_ERROR)
@@ -333,7 +333,7 @@ DLL_API int __stdcall Send(SOCKET s, LPCSTR buffer, ULONG bufLen)
 	return retVal;
 }
 
-DLL_API int __stdcall Receive(SOCKET s, LPSTR buffer, ULONG bufLen)
+LBNET_API int __stdcall Receive(SOCKET s, LPSTR buffer, ULONG bufLen)
 {
 	int retVal = recv(s, buffer, bufLen, 0);
 	if (retVal == SOCKET_ERROR)
@@ -344,18 +344,18 @@ DLL_API int __stdcall Receive(SOCKET s, LPSTR buffer, ULONG bufLen)
 	return retVal;
 }
 
-DLL_API BOOL __stdcall IsSocketInvalid(SOCKET sock)
+LBNET_API BOOL __stdcall IsSocketInvalid(SOCKET sock)
 {
 	return sock == INVALID_SOCKET;
 }
 
-DLL_API ULONG __stdcall CloseSocket(SOCKET sock)
+LBNET_API ULONG __stdcall CloseSocket(SOCKET sock)
 {
 	return closesocket(sock);
 }
 
 
-DLL_API BOOL __stdcall IsReadAvailable(SOCKET sock, int msTimeout)
+LBNET_API BOOL __stdcall IsReadAvailable(SOCKET sock, int msTimeout)
 {
 	if (sock == INVALID_SOCKET) {
 		lastError = INVALID_SOCKET;
@@ -391,7 +391,7 @@ DLL_API BOOL __stdcall IsReadAvailable(SOCKET sock, int msTimeout)
 	return 0;
 }
 
-DLL_API int __stdcall PingHost(LPCSTR host, int PktSize, int * status, int * msReply, int msTimeout)
+LBNET_API int __stdcall PingHost(LPCSTR host, int PktSize, int * status, int * msReply, int msTimeout)
 {
 	if (host == NULL || status == NULL || msReply == NULL || PktSize == NULL)
 	{

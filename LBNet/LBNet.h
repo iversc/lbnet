@@ -5,10 +5,10 @@
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 
-#define DLL_API EXTERN_C __declspec(dllexport)
+#define LBNET_API EXTERN_C __declspec(dllexport)
 #define IO_BUFFER_SIZE  0x10000
 
-#define TLS_Wrapper_Version 10
+#define LBNet_Version 10
 
 extern WSADATA wsaData;
 extern ULONG lastError;
@@ -19,7 +19,7 @@ extern HANDLE debugFile;
 void WriteDebugLog(LPCSTR function, LPCSTR message);
 #endif
 
-DLL_API BOOL __stdcall IsReadAvailable(SOCKET sock, int msTimeout);
+LBNET_API BOOL __stdcall IsReadAvailable(SOCKET sock, int msTimeout);
 
 
 typedef struct TLSCtxtWrapper

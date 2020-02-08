@@ -167,62 +167,62 @@ End Function
 '==Helper Functions==
 '====================
 Sub OpenTLSDLL
-    open "Debug\LB-Schannel-Wrapper.dll" for DLL as #LBSchannelWrapper
+    open "Debug\LBNet.dll" for DLL as #LBNet
     a = InitSockets()
 End Sub
 
 Sub CloseTLSDLL
     a = EndSockets()
-    close #LBSchannelWrapper
+    close #LBNet
 End Sub
 
 Function InitSockets()
-    CallDLL #LBSchannelWrapper, "InitSockets",_
+    CallDLL #LBNet, "InitSockets",_
     InitSockets as long
 End Function
 
 Function EndSockets()
-    CallDLL #LBSchannelWrapper, "EndSockets",_
+    CallDLL #LBNet, "EndSockets",_
     EndSockets as long
 End Function
 
 Function CreateTLSContext()
-    CallDLL #LBSchannelWrapper, "CreateTLSContext",_
+    CallDLL #LBNet, "CreateTLSContext",_
     CreateTLSContext as ulong
 End Function
 
 Function DestroyTLSContext(hTLS)
-    CallDLL #LBSchannelWrapper, "DestroyTLSContext",_
+    CallDLL #LBNet, "DestroyTLSContext",_
     DestroyTLSContext as long
 End Function
 
 Function BeginTLSClientNoValidation(hTLS)
-    CallDLL #LBSchannelWrapper, "BeginTLSClientNoValidation",_
+    CallDLL #LBNet, "BeginTLSClientNoValidation",_
     hTLS as ulong,_
     BeginTLSClientNoValidation as long
 End Function
 
 Function BeginTLSClient(hTLS)
-    CallDLL #LBSchannelWrapper, "BeginTLSClient",_
+    CallDLL #LBNet, "BeginTLSClient",_
     hTLS as ulong,_
     BeginTLSClient as long
 End Function
 
 Function IsSocketInvalid(sock)
-    CallDLL #LBSchannelWrapper, "IsSocketInvalid",_
+    CallDLL #LBNet, "IsSocketInvalid",_
     sock as ulong,_
     IsSocketInvalid as long
 End Function
 
 Function BeginTLSServer(hTLS, serverName$)
-    CallDLL #LBSchannelWrapper, "BeginTLSServer",_
+    CallDLL #LBNet, "BeginTLSServer",_
     hTLS as ulong,_
     serverName$ as ptr,_
     BeginTLSServer as long
 End Function
 
 Function BeginTLSServerWithPFX(hTLS, serverName$, certFileName$, certPass$)
-    CallDLL #LBSchannelWrapper, "BeginTLSServerWithPFX",_
+    CallDLL #LBNet, "BeginTLSServerWithPFX",_
     hTLS as ulong,_
     serverName$ as ptr,_
     certFileName$ as ptr,_
@@ -231,14 +231,14 @@ Function BeginTLSServerWithPFX(hTLS, serverName$, certFileName$, certPass$)
 End Function
 
 Function SetTLSSocket(hTLS, sock)
-    CallDLL #LBSchannelWrapper, "SetTLSSocket",_
+    CallDLL #LBNet, "SetTLSSocket",_
     hTLS as ulong,_
     sock as long,_
     SetTLSSock as long
 End Function
 
 Function PerformClientHandshake(hTLS, serverName$, msTimeout)
-    CallDLL #LBSchannelWrapper, "PerformClientHandshake",_
+    CallDLL #LBNet, "PerformClientHandshake",_
     hTLS as ulong,_
     serverName$ as ptr,_
     msTimeout as long,_
@@ -246,7 +246,7 @@ Function PerformClientHandshake(hTLS, serverName$, msTimeout)
 End Function
 
 Function PerformServerHandshake(hTLS, doInitialRead, initBuf$, initBufSize, msTimeout)
-    CallDLL #LBSchannelWrapper, "PerformServerHandshake",_
+    CallDLL #LBNet, "PerformServerHandshake",_
     hTLS as ulong,_
     doInitialRead as long,_
     initBuf$ as ptr,_
@@ -256,13 +256,13 @@ Function PerformServerHandshake(hTLS, doInitialRead, initBuf$, initBufSize, msTi
 End Function
 
 Function CreateListenSocket(pService$)
-    CallDLL #LBSchannelWrapper, "CreateListenSocket",_
+    CallDLL #LBNet, "CreateListenSocket",_
     pService$ as ptr,_
     CreateListenSocket as ulong
 End Function
 
 Function AcceptConnection(ServerSocket, byref buf$, bufLen)
-    CallDLL #LBSchannelWrapper, "AcceptConnection",_
+    CallDLL #LBNet, "AcceptConnection",_
     ServerSocket as ulong,_
     buf$ as ptr,_
     bufLen as long,_
@@ -270,14 +270,14 @@ Function AcceptConnection(ServerSocket, byref buf$, bufLen)
 End Function
 
 Function IsReadAvailable(socket, msTimeout)
-    CallDLL #LBSchannelWrapper, "IsReadAvailable",_
+    CallDLL #LBNet, "IsReadAvailable",_
     socket as ulong,_
     msTimeout as long,_
     IsReadAvailable as long
 End Function
 
 Function IsTLSReadAvailable(hTLS, msTimeout)
-    CallDLL #LBSchannelWrapper, "IsTLSReadAvailable",_
+    CallDLL #LBNet, "IsTLSReadAvailable",_
     hTLS as ulong,_
     msTimeout as long,_
     IsTLSReadAvailable as long
@@ -290,7 +290,7 @@ Function PingHost(host$, packetSize, byref status, byref msResponse, msTimeout)
     a.b.struct = status
     c.d.struct = msResponse
 
-    CallDLL #LBSchannelWrapper, "PingHost",_
+    CallDLL #LBNet, "PingHost",_
     host$ as ptr,_
     packetSize as long,_
     a as struct,_
@@ -303,7 +303,7 @@ Function PingHost(host$, packetSize, byref status, byref msResponse, msTimeout)
 End Function
 
 Function Connect(host$, srv$, msTimeout)
-    CallDLL #LBSchannelWrapper, "Connect",_
+    CallDLL #LBNet, "Connect",_
     host$ as ptr,_
     srv$ as ptr,_
     msTimeout as long,_
@@ -311,13 +311,13 @@ Function Connect(host$, srv$, msTimeout)
 End Function
 
 Function CloseSocket(sock)
-    CallDLL #LBSchannelWrapper, "CloseSocket",_
+    CallDLL #LBNet, "CloseSocket",_
     sock as long,_
     CloseSocket as long
 End Function
 
 Function GetError()
-    CallDLL #LBSchannelWrapper, "GetError",_
+    CallDLL #LBNet, "GetError",_
     GetError as long
 
     if GetError < 0 then
@@ -326,7 +326,7 @@ Function GetError()
 End Function
 
 Function Send(sock, msg$, msgLen)
-    CallDLL #LBSchannelWrapper, "Send",_
+    CallDLL #LBNet, "Send",_
     sock as long,_
     msg$ as ptr,_
     msgLen as long,_
@@ -334,7 +334,7 @@ Function Send(sock, msg$, msgLen)
 End Function
 
 Function EncryptSend(hTLS, msg$, msgLen)
-    CallDLL #LBSchannelWrapper, "EncryptSend",_
+    CallDLL #LBNet, "EncryptSend",_
     hTLS as ulong,_
     msg$ as ptr,_
     msgLen as long,_
@@ -342,7 +342,7 @@ Function EncryptSend(hTLS, msg$, msgLen)
 End Function
 
 Function Receive(sock, byref buf$, bufLen)
-    CallDLL #LBSchannelWrapper, "Receive",_
+    CallDLL #LBNet, "Receive",_
     sock as long,_
     buf$ as ptr,_
     bufLen as long,_
@@ -350,7 +350,7 @@ Function Receive(sock, byref buf$, bufLen)
 End Function
 
 Function DecryptReceive(hTLS, byref buf$, bufLen, msTimeout)
-    CallDLL #LBSchannelWrapper, "DecryptReceive",_
+    CallDLL #LBNet, "DecryptReceive",_
     hTLS as ulong,_
     buf$ as ptr,_
     bufLen as long,_
@@ -359,7 +359,7 @@ Function DecryptReceive(hTLS, byref buf$, bufLen, msTimeout)
 End Function
 
 Function EndTLSClientSession(hTLS)
-    CallDLL #LBSchannelWrapper, "EndTLSClientSession",_
+    CallDLL #LBNet, "EndTLSClientSession",_
     hTLS as ulong,_
     EndTLSClientSession as long
 End Function

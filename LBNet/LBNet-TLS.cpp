@@ -1,26 +1,26 @@
 #include "stdafx.h"
-#include "LB-SChannel-Wrapper.h"
+#include "LBNet.h"
 #include <stdio.h>
 #include <stdlib.h>
 
 SECURITY_STATUS WrapperCheck(PTLSCtxtWrapper pWrapper)
 {
 	if (!pWrapper) return SEC_E_INVALID_HANDLE;
-	if (pWrapper->WrapperVersion != TLS_Wrapper_Version) return SEC_E_INVALID_HANDLE;
+	if (pWrapper->WrapperVersion != LBNet_Version) return SEC_E_INVALID_HANDLE;
 
 	return SEC_E_OK;
 }
 
-DLL_API PTLSCtxtWrapper __stdcall CreateTLSContext()
+LBNET_API PTLSCtxtWrapper __stdcall CreateTLSContext()
 {
 	PTLSCtxtWrapper pWrapper = new TLSCtxtWrapper();
-	pWrapper->WrapperVersion = TLS_Wrapper_Version;
+	pWrapper->WrapperVersion = LBNet_Version;
 
 	return pWrapper;
 }
 
 
-DLL_API SECURITY_STATUS __stdcall DestroyTLSContext(PTLSCtxtWrapper pWrapper)
+LBNET_API SECURITY_STATUS __stdcall DestroyTLSContext(PTLSCtxtWrapper pWrapper)
 {
 	if (FAILED(WrapperCheck(pWrapper))) return SEC_E_INVALID_HANDLE;
 
@@ -54,7 +54,7 @@ DLL_API SECURITY_STATUS __stdcall DestroyTLSContext(PTLSCtxtWrapper pWrapper)
 	return SEC_E_OK;
 }
 
-DLL_API SECURITY_STATUS __stdcall SetTLSSocket(PTLSCtxtWrapper pWrapper, SOCKET sock)
+LBNET_API SECURITY_STATUS __stdcall SetTLSSocket(PTLSCtxtWrapper pWrapper, SOCKET sock)
 {
 	if (FAILED(WrapperCheck(pWrapper))) return SEC_E_INVALID_HANDLE;
 
@@ -202,7 +202,7 @@ SECURITY_STATUS BeginTLSServerInternal(PTLSCtxtWrapper pWrapper, PCCERT_CONTEXT 
 		&sc, NULL, NULL, pWrapper->pCredHandle, NULL);
 }
 
-DLL_API SECURITY_STATUS BeginTLSServerWithPFX(PTLSCtxtWrapper pWrapper, LPCSTR serverName, LPCSTR fileName, LPCSTR filePassword)
+LBNET_API SECURITY_STATUS BeginTLSServerWithPFX(PTLSCtxtWrapper pWrapper, LPCSTR serverName, LPCSTR fileName, LPCSTR filePassword)
 {
 	HANDLE hFile = NULL;
 	DWORD fileSize = 0;
@@ -318,7 +318,7 @@ BTSWC_Cleanup:
 	return scRet;
 }
 
-DLL_API SECURITY_STATUS BeginTLSServer(PTLSCtxtWrapper pWrapper, LPCSTR serverName)
+LBNET_API SECURITY_STATUS BeginTLSServer(PTLSCtxtWrapper pWrapper, LPCSTR serverName)
 {
 	if (FAILED(WrapperCheck(pWrapper))) return SEC_E_INVALID_HANDLE;
 
@@ -354,18 +354,18 @@ DLL_API SECURITY_STATUS BeginTLSServer(PTLSCtxtWrapper pWrapper, LPCSTR serverNa
 	return BeginTLSServerInternal(pWrapper, pCertContext);
 }
 
-DLL_API SECURITY_STATUS __stdcall BeginTLSClientNoValidation(PTLSCtxtWrapper pWrapper)
+LBNET_API SECURITY_STATUS __stdcall BeginTLSClientNoValidation(PTLSCtxtWrapper pWrapper)
 {
 	DWORD dwFlags = SCH_CRED_MANUAL_CRED_VALIDATION | SCH_CRED_NO_DEFAULT_CREDS | SCH_CRED_NO_SERVERNAME_CHECK;
 	return BeginTLSClientInternal(pWrapper, dwFlags);
 }
 
-DLL_API SECURITY_STATUS __stdcall BeginTLSClient(PTLSCtxtWrapper pWrapper)
+LBNET_API SECURITY_STATUS __stdcall BeginTLSClient(PTLSCtxtWrapper pWrapper)
 {
 	return BeginTLSClientInternal(pWrapper, 0);
 }
 
-DLL_API SECURITY_STATUS __stdcall EndTLSClientSession(PTLSCtxtWrapper pWrapper)
+LBNET_API SECURITY_STATUS __stdcall EndTLSClientSession(PTLSCtxtWrapper pWrapper)
 {
 	if (FAILED(WrapperCheck(pWrapper))) return SEC_E_INVALID_HANDLE;
 
@@ -694,7 +694,7 @@ BOOL serverHandshakeDoInitialRead(SOCKET s, LPVOID * buffer, int * bufSize)
 	return true;
 }
 
-DLL_API SECURITY_STATUS __stdcall PerformServerHandshake(PTLSCtxtWrapper pWrapper, BOOL bPerformInitialRead, LPSTR initBuf, ULONG initBufSize, ULONG msTimeout)
+LBNET_API SECURITY_STATUS __stdcall PerformServerHandshake(PTLSCtxtWrapper pWrapper, BOOL bPerformInitialRead, LPSTR initBuf, ULONG initBufSize, ULONG msTimeout)
 {
 	if (FAILED(WrapperCheck(pWrapper))) return SEC_E_INVALID_HANDLE;
 
@@ -725,7 +725,7 @@ DLL_API SECURITY_STATUS __stdcall PerformServerHandshake(PTLSCtxtWrapper pWrappe
 	return scRet;
 }
 
-DLL_API SECURITY_STATUS __stdcall PerformClientHandshake(PTLSCtxtWrapper pWrapper, LPSTR pServerName, ULONG msTimeout)
+LBNET_API SECURITY_STATUS __stdcall PerformClientHandshake(PTLSCtxtWrapper pWrapper, LPSTR pServerName, ULONG msTimeout)
 {
 	if (FAILED(WrapperCheck(pWrapper))) return SEC_E_INVALID_HANDLE;
 
@@ -782,7 +782,7 @@ DLL_API SECURITY_STATUS __stdcall PerformClientHandshake(PTLSCtxtWrapper pWrappe
 	return scRet;
 }
 
-DLL_API int __stdcall EncryptSend(PTLSCtxtWrapper pWrapper, LPCSTR message, ULONG msgLen)
+LBNET_API int __stdcall EncryptSend(PTLSCtxtWrapper pWrapper, LPCSTR message, ULONG msgLen)
 {
 	if (FAILED(WrapperCheck(pWrapper))) {
 		lastError = SEC_E_INVALID_HANDLE;
@@ -880,7 +880,7 @@ DLL_API int __stdcall EncryptSend(PTLSCtxtWrapper pWrapper, LPCSTR message, ULON
 	return sentBytes;
 }
 
-DLL_API int __stdcall DecryptReceive(PTLSCtxtWrapper pWrapper, LPSTR buffer, ULONG bufLen, ULONG msTimeout)
+LBNET_API int __stdcall DecryptReceive(PTLSCtxtWrapper pWrapper, LPSTR buffer, ULONG bufLen, ULONG msTimeout)
 {
 	if (FAILED(WrapperCheck(pWrapper)))
 	{
@@ -1073,7 +1073,7 @@ DLL_API int __stdcall DecryptReceive(PTLSCtxtWrapper pWrapper, LPSTR buffer, ULO
 	return retAmount;
 }
 
-DLL_API BOOL __stdcall IsTLSReadAvailable(PTLSCtxtWrapper pWrapper, int msTimeout)
+LBNET_API BOOL __stdcall IsTLSReadAvailable(PTLSCtxtWrapper pWrapper, int msTimeout)
 {
 	if (FAILED(WrapperCheck(pWrapper)))
 	{
