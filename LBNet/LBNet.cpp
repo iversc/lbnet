@@ -21,6 +21,8 @@
 WSADATA wsaData;
 ULONG lastError = 0;
 
+enum Protocol {TCP, UDP};
+
 #ifdef _DEBUG
 HANDLE debugFile = INVALID_HANDLE_VALUE;
 #endif
@@ -176,6 +178,11 @@ LBNET_API SOCKET __stdcall AcceptConnection(SOCKET sock, LPSTR buffer, ULONG buf
 
 LBNET_API SOCKET __stdcall Connect(LPCSTR pHost, LPCSTR pService, ULONG msTimeout)
 {
+	return ConnectInternal(pHost, pService, msTimeout, IPPROTO_TCP);
+}
+
+SOCKET ConnectInternal(LPCSTR pHost, LPCSTR pService, ULONG msTimeout, int protocol)
+{
 	TIMEVAL tv = TIMEVAL();
 	//Make sure we were actually passed strings to use.
 	//getaddrinfo() will do further checking, and we will return INVALID_SOCKET then,
@@ -195,6 +202,8 @@ LBNET_API SOCKET __stdcall Connect(LPCSTR pHost, LPCSTR pService, ULONG msTimeou
 		return INVALID_SOCKET;
 	}
 
+	int socktype = (protocol == IPPROTO_TCP) ? SOCK_STREAM : SOCK_DGRAM;
+
 	//Hints are used to tell getaddrinfo() what kind of socket we're intending to use
 	//You can specify family(IPv4, IPv6, UNIX, Unspecified/any, etc),
 	//socket type(stream or datagram, basically connection-oriented(TCP) or connectionless(UDP)),
@@ -204,8 +213,8 @@ LBNET_API SOCKET __stdcall Connect(LPCSTR pHost, LPCSTR pService, ULONG msTimeou
 	//we can connect to either IPv4 or IPv6 servers without changing code.
 	addrinfo hints = addrinfo();
 	hints.ai_family = AF_UNSPEC;
-	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_protocol = IPPROTO_TCP;
+	hints.ai_socktype = socktype;
+	hints.ai_protocol = protocol;
 
 	addrinfo * result = NULL;
 	addrinfo * ptr = NULL;
@@ -236,7 +245,7 @@ LBNET_API SOCKET __stdcall Connect(LPCSTR pHost, LPCSTR pService, ULONG msTimeou
 		{
 			//This will only happen after the initial socket open if 
 			//a timeout causes a socket to be prematurely closed.
-			s = socket(AF_UNSPEC, SOCK_STREAM, IPPROTO_TCP);
+			s = socket(AF_UNSPEC, socktype, protocol);
 			if (s == INVALID_SOCKET)
 			{
 				lastError = WSAGetLastError();

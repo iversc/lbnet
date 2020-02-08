@@ -1,10 +1,31 @@
+    call OpenLBNetDLL
 
+    input "press ENTER to begin.";a
+
+    connectServer$  = "127.0.0.1"
+    hSock = UDPConnect(connectServer$, "50000", 0)
+    if IsSocketInvalid(hSock) then
+        print "Connect() failed. - ";GetError()
+        goto [doEnd]
+    end if
+
+    print "UDPConnect() successful."
+
+    data$ = "SomeRandomData"
+    lenData = len(data$)
+
+    print "UDPSend() - ";UDPSend(hSock, data$, lenData)
+
+    a = CloseSocket(hSock)
+
+[doEnd]
+    call CloseLBNetDLL
 
 '====================
 '==Helper Functions==
 '====================
 Sub OpenLBNetDLL
-    open "LBNet.dll" for DLL as #LBNet
+    open "Debug\LBNet.dll" for DLL as #LBNet
     a = InitLBNet()
 End Sub
 
@@ -38,7 +59,7 @@ Function BeginTLSClientNoValidation(hTLS)
     CallDLL #LBNet, "BeginTLSClientNoValidation",_
     hTLS as ulong,_
     BeginTLSClientNoValidation as long
-End Function                          
+End Function
 
 Function BeginTLSClient(hTLS)
     CallDLL #LBNet, "BeginTLSClient",_
@@ -213,3 +234,4 @@ Function UDPSendTo(sock, buf$, bufLen, udpInfo$)
     udpInfo$ as ptr,_
     UDPSend as long
 End Function
+

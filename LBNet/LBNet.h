@@ -20,6 +20,7 @@ void WriteDebugLog(LPCSTR function, LPCSTR message);
 #endif
 
 LBNET_API BOOL __stdcall IsReadAvailable(SOCKET sock, int msTimeout);
+SOCKET ConnectInternal(LPCSTR pHost, LPCSTR pService, ULONG msTimeout, int protocol);
 
 
 typedef struct TLSCtxtWrapper
@@ -35,4 +36,10 @@ typedef struct TLSCtxtWrapper
 	BOOL isServerContext;
 	BOOL acceptSuccess;
 } *PTLSCtxtWrapper;
+
+typedef struct LBNetUDPInfo
+{
+	SOCKADDR_STORAGE sockaddr;
+	int	sockaddrLen;
+} *PLBNetUDPInfo;
 

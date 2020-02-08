@@ -27,3 +27,6 @@ EXPORTS
 	BeginTLSServer
 	PerformServerHandshake
 	BeginTLSServerWithPFX
+	UDPConnect
+	GetUDPInfoSize
+	UDPSend
