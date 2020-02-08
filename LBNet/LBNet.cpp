@@ -391,7 +391,7 @@ LBNET_API BOOL __stdcall IsReadAvailable(SOCKET sock, int msTimeout)
 	return 0;
 }
 
-LBNET_API int __stdcall PingHost(LPCSTR host, int PktSize, int * status, int * msReply, int msTimeout)
+LBNET_API int __stdcall PingHost(LPCSTR host, UINT PktSize, int * status, int * msReply, int msTimeout)
 {
 	if (host == NULL || status == NULL || msReply == NULL || PktSize == NULL)
 	{
@@ -420,6 +420,21 @@ LBNET_API int __stdcall PingHost(LPCSTR host, int PktSize, int * status, int * m
 		return INVALID_SOCKET;
 	}
 
+	// Create request data to use
+	UINT n;
+	char* requestData;
+
+	requestData = (char*)malloc(PktSize);
+
+	if (requestData == NULL)
+	{
+		lastError = ERROR_OUTOFMEMORY;
+		return INVALID_SOCKET;
+	}
+
+	for (n = 0; n < PktSize; n++)
+		requestData[n] = rand() % 26 + 'a';
+
 	//If we have an IPv4 result, use IcmpSendEcho().
 	if (result->ai_family == AF_INET)
 	{
@@ -434,15 +449,6 @@ LBNET_API int __stdcall PingHost(LPCSTR host, int PktSize, int * status, int * m
 			return INVALID_SOCKET;
 		}
 
-		// Create request data to use
-		int n;
-		char * requestData;
-
-		requestData = (char*)malloc(PktSize);
-		
-		for (n = 0; n < PktSize; n++)
-			requestData[n] = rand() % 26 + 'a';
-
 		// Calculate response buffer size.
 		//
 		// Documented as needing to be the size of one ICMP_ECHO_REPLY structure,
@@ -451,6 +457,12 @@ LBNET_API int __stdcall PingHost(LPCSTR host, int PktSize, int * status, int * m
 
 		// Create response buffer.
 		PVOID responseBuf = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, responseBufSize);
+
+		if (responseBuf == NULL)
+		{
+			lastError = ERROR_OUTOFMEMORY;
+			return INVALID_SOCKET;
+		}
 
 		if (IcmpSendEcho(icmp, addr->sin_addr.S_un.S_addr, (LPVOID)requestData, PktSize, NULL,
 			responseBuf, responseBufSize, msTimeout) == 0)
@@ -492,15 +504,6 @@ LBNET_API int __stdcall PingHost(LPCSTR host, int PktSize, int * status, int * m
 		saSource.sin6_flowinfo = 0;
 		saSource.sin6_port = 0;
 
-		// Create request data to use
-		int n;
-		char * requestData;
-
-		requestData = (char*)malloc(PktSize);
-
-		for (n = 0; n < PktSize; n++)
-			requestData[n] = rand() % 26 + 'a';
-
 		// Calculate response buffer size.
 		//
 		// Documented as needing to be the size of one ICMPV6_ECHO_REPLY structure,
@@ -509,6 +512,12 @@ LBNET_API int __stdcall PingHost(LPCSTR host, int PktSize, int * status, int * m
 
 		// Create response buffer.
 		PVOID responseBuf = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, responseBufSize);
+
+		if (responseBuf == NULL)
+		{
+			lastError = ERROR_OUTOFMEMORY;
+			return INVALID_SOCKET;
+		}
 
 		if (Icmp6SendEcho2(icmp, NULL, NULL, NULL, &saSource, addr, (LPVOID)requestData,
 			PktSize, NULL, responseBuf, responseBufSize, msTimeout) == 0)
