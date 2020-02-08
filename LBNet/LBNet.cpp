@@ -239,6 +239,17 @@ SOCKET ConnectInternal(LPCSTR pHost, LPCSTR pService, ULONG msTimeout, int proto
 
 	SOCKET s = INVALID_SOCKET;
 
+	if (protocol == IPPROTO_UDP)
+	{
+		PLBNetUDPSocket udpSock = new LBNetUDPSocket();
+		udpSock->s = socket(AF_UNSPEC, SOCK_DGRAM, IPPROTO_UDP);
+		udpSock->udpInfo.sockaddrLen = result->ai_addrlen;
+
+		CopyMemory(&udpSock->udpInfo.sockaddr, result->ai_addr, result->ai_addrlen);
+		freeaddrinfo(result);
+		return (UINT_PTR)udpSock;
+	}
+
 	for (ptr = result; ptr != NULL; ptr = ptr->ai_next)
 	{
 		if (s == INVALID_SOCKET)

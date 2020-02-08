@@ -196,20 +196,59 @@ Function UDPConnect(host$, srv$, msTimeout)
     UDPConnect as long
 End Function
 
-Function UDPSend(sock, buf$, bufLen)
+Function UDPSend(udpSock, buf$, bufLen)
     CallDLL #LBNet, "UDPSend",_
-    sock as long,_
+    udpSock as long,_
     buf$ as ptr,_
     bufLen as long,_
     0 as long,_
     UDPSend as long
 End Function
 
-Function UDPSendTo(sock, buf$, bufLen, udpInfo$)
+Function UDPSendTo(udpSock, buf$, bufLen, udpInfo$)
     CallDLL #LBNet, "UDPSend",_
-    sock as long,_
+    udpSock as long,_
     buf$ as ptr,_
     bufLen as long,_
     udpInfo$ as ptr,_
-    UDPSend as long
+    UDPSendTo as long
 End Function
+
+Function UDPClose(udpSock)
+    CallDLL #LBNet, "UDPClose",_
+    udpSock as long,_
+    UDPClose as long
+End Function
+
+Function GetUDPInfoSize()
+    CallDLL #LBNet, "GetUDPInfoSize",_
+    GetUDPInfoSize as long
+End Function
+
+Function UDPReceive(udpSock, byref buf$, bufLen)
+    CallDLL #LBNet, "UDPReceive",_
+    udpSock as long,_
+    buf$ as ptr,_
+    bufLen as long,_
+    0 as long,_
+    UDPReceive as long
+End Function
+
+Function UDPReceiveFrom(udpSock, byref buf$, bufLen, byref udpFrom$)
+    udpFrom$ = space$(GetUDPInfoSize())
+
+    CallDLL #LBNet, "UDPReceive",_
+    udpSock as long,_
+    buf$ as ptr,_
+    bufLen as long,_
+    udpFrom$ as ptr,_
+    UDPReceiveFrom as long
+End Function
+
+Function IsUDPReadAvailable(udpSock, msTimeout)
+    CallDLL #LBNet, "IsUDPReadAvailable",_
+    udpSock as long,_
+    msTimeout as long,_
+    IsUDPReadAvailable as long
+End Function
+

@@ -11,12 +11,46 @@
 
     print "UDPConnect() successful."
 
-    data$ = "SomeRandomData"
+    data$ = "Sosdfhdrtja"
     lenData = len(data$)
 
     print "UDPSend() - ";UDPSend(hSock, data$, lenData)
 
-    a = CloseSocket(hSock)
+    'goto [doReceive]
+[respLoop]
+    timer 0
+    print "Waiting for response..."
+    ret = IsUDPReadAvailable(hSock, 0)
+
+    if ret = 0 then
+        print "Still waiting..."
+
+        timer 1000, [respLoop]
+        wait
+    end if
+
+    [doReceive]
+
+    bufLen = 1024
+    buf$ = space$(bufLen)
+
+    num = UDPReceive(hSock, buf$, bufLen)
+
+    if num = -1 then
+        theError = GetError()
+        if theError = 10101 then
+            print "Connection closed by server."
+        else
+            print "Socket error occurred. - ";dechex$(GetError())
+        end if
+
+        goto [doClose]
+    end if
+
+    print "Response - ";left$(buf$, num)
+
+[doClose]
+    a = UDPClose(hSock)
 
 [doEnd]
     call CloseLBNetDLL
@@ -233,5 +267,43 @@ Function UDPSendTo(sock, buf$, bufLen, udpInfo$)
     bufLen as long,_
     udpInfo$ as ptr,_
     UDPSend as long
+End Function
+
+Function UDPClose(udpSock)
+    CallDLL #LBNet, "UDPClose",_
+    udpSock as long,_
+    UDPClose as long
+End Function
+
+Function GetUDPInfoSize()
+    CallDLL #LBNet, "GetUDPInfoSize",_
+    GetUDPInfoSize as long
+End Function
+
+Function UDPReceive(udpSock, byref buf$, bufLen)
+    CallDLL #LBNet, "UDPReceive",_
+    udpSock as long,_
+    buf$ as ptr,_
+    bufLen as long,_
+    0 as long,_
+    UDPReceive as long
+End Function
+
+Function UDPReceiveFrom(udpSock, byref buf$, bufLen, byref udpFrom$)
+    udpFrom$ = space$(GetUDPInfoSize())
+
+    CallDLL #LBNet, "UDPReceive",_
+    udpSock as long,_
+    buf$ as ptr,_
+    bufLen as long,_
+    udpFrom$ as ptr,_
+    UDPReceiveFrom as long
+End Function
+
+Function IsUDPReadAvailable(udpSock, msTimeout)
+    CallDLL #LBNet, "IsUDPReadAvailable",_
+    udpSock as long,_
+    msTimeout as long,_
+    IsUDPReadAvailable as long
 End Function
 

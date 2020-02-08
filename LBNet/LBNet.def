@@ -30,3 +30,6 @@ EXPORTS
 	UDPConnect
 	GetUDPInfoSize
 	UDPSend
+	UDPClose
+	UDPReceive
+	IsUDPReadAvailable
