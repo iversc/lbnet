@@ -1,5 +1,5 @@
 
-    call OpenTLSDLL
+    call OpenLBNetDLL
 
     input "press ENTER to begin.";a
 
@@ -155,7 +155,7 @@
     a = CloseSocket(hServSock)
 
 [doEnd]
-    call CloseTLSDLL
+    call CloseLBNetDLL
 
 Function randNum(min, max)
     randNum = int(rnd(1) * max) + min
@@ -166,24 +166,24 @@ End Function
 '====================
 '==Helper Functions==
 '====================
-Sub OpenTLSDLL
+Sub OpenLBNetDLL
     open "Debug\LBNet.dll" for DLL as #LBNet
-    a = InitSockets()
+    a = InitLBNet()
 End Sub
 
-Sub CloseTLSDLL
-    a = EndSockets()
+Sub CloseLBNetDLL
+    a = EndLBNet()
     close #LBNet
 End Sub
 
-Function InitSockets()
-    CallDLL #LBNet, "InitSockets",_
-    InitSockets as long
+Function InitLBNet()
+    CallDLL #LBNet, "InitLBNet",_
+    InitLBNet as long
 End Function
 
-Function EndSockets()
-    CallDLL #LBNet, "EndSockets",_
-    EndSockets as long
+Function EndLBNet()
+    CallDLL #LBNet, "EndLBNet",_
+    EndLBNet as long
 End Function
 
 Function CreateTLSContext()

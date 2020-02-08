@@ -18,8 +18,10 @@ EXPORTS
 	IsTLSReadAvailable
 	CreateListenSocket
 	AcceptConnection
-	InitSockets
-	EndSockets
+	InitLBNet
+	InitSockets=InitLBNet
+	EndLBNet
+	EndSockets=EndLBNet
 	PingHost
 	EndTLSClientSession
 	BeginTLSServer

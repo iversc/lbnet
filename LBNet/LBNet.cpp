@@ -50,20 +50,20 @@ LBNET_API ULONG __stdcall GetError()
 	return lastError;
 }
 
-LBNET_API int __stdcall InitSockets()
+LBNET_API int __stdcall InitLBNet()
 {
 	//Initialize Winsock.
 #ifdef _DEBUG
-	WriteDebugLog("InitSockets", "DLL init");
+	WriteDebugLog("InitLBNet", "DLL init");
 #endif
 	lastError = WSAStartup(MAKEWORD(2, 2), &wsaData);
 	return lastError;
 }
 
-LBNET_API int __stdcall EndSockets()
+LBNET_API int __stdcall EndLBNet()
 {
 #ifdef _DEBUG
-	WriteDebugLog("EndSockets", "DLL term");
+	WriteDebugLog("EndLBNet", "DLL term");
 #endif
 
 	int iResult = WSACleanup();
@@ -128,7 +128,7 @@ LBNET_API SOCKET __stdcall CreateListenSocket(LPCSTR pService)
 		}
 	}
 
-	if (boundFlag = 0)
+	if (boundFlag == 0)
 	{
 		closesocket(s);
 		return INVALID_SOCKET;
