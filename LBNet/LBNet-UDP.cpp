@@ -6,7 +6,7 @@ LBNET_API PLBNetUDPSocket __stdcall UDPConnect(LPCSTR pHost, LPCSTR pService, UL
 	return (PLBNetUDPSocket)ConnectInternal(pHost, pService, msTimeout, IPPROTO_UDP);
 }
 
-LBNET_API UINT __stdcall GetUDPInfoSize()
+LBNET_API UINT __stdcall UDPGetInfoSize()
 {
 	return sizeof(LBNetUDPInfo);
 }
@@ -67,7 +67,16 @@ LBNET_API int __stdcall UDPClose(PLBNetUDPSocket udpSock)
 	return retVal;
 }
 
-LBNET_API BOOL __stdcall IsUDPReadAvailable(PLBNetUDPSocket udpSock, int msTimeout)
+LBNET_API BOOL __stdcall UDPIsReadAvailable(PLBNetUDPSocket udpSock, int msTimeout)
 {
 	return IsReadAvailable(udpSock->s, msTimeout);
+}
+
+LBNET_API PLBNetUDPSocket __stdcall UDPCreateListenSocket(LPCSTR pService)
+{
+	PLBNetUDPSocket udpSock = new LBNetUDPSocket();
+
+	udpSock->s = CreateListenSocketInternal(pService, IPPROTO_UDP);
+
+	return udpSock;
 }

@@ -75,6 +75,11 @@ LBNET_API int __stdcall EndLBNet()
 
 LBNET_API SOCKET __stdcall CreateListenSocket(LPCSTR pService)
 {
+	return CreateListenSocketInternal(pService, IPPROTO_TCP);
+}
+
+SOCKET CreateListenSocketInternal(LPCSTR pService, int protocol)
+{
 	int boundFlag = 0;
 
 	if (pService == NULL)
@@ -82,6 +87,8 @@ LBNET_API SOCKET __stdcall CreateListenSocket(LPCSTR pService)
 		lastError = ERROR_INVALID_PARAMETER;
 		return INVALID_SOCKET;
 	}
+
+	int socktype = (protocol == IPPROTO_TCP) ? SOCK_STREAM : SOCK_DGRAM;
 
 	//Hints are used to tell getaddrinfo() what kind of socket we're intending to use
 	//You can specify family(IPv4, IPv6, UNIX, Unspecified/any, etc),
@@ -92,8 +99,8 @@ LBNET_API SOCKET __stdcall CreateListenSocket(LPCSTR pService)
 	//we can connect to either IPv4 or IPv6 servers without changing code.
 	addrinfo hints = addrinfo();
 	hints.ai_family = AF_UNSPEC;
-	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_protocol = IPPROTO_TCP;
+	hints.ai_socktype = socktype;
+	hints.ai_protocol = protocol;
 	hints.ai_flags = AI_PASSIVE;
 
 	addrinfo * result = NULL;
@@ -115,7 +122,7 @@ LBNET_API SOCKET __stdcall CreateListenSocket(LPCSTR pService)
 		{
 			//This will only happen after the initial socket open if 
 			//a timeout causes a socket to be prematurely closed.
-			s = socket(AF_UNSPEC, SOCK_STREAM, IPPROTO_TCP);
+			s = socket(AF_UNSPEC, socktype, protocol);
 			if (s == INVALID_SOCKET)
 			{
 				lastError = WSAGetLastError();
@@ -137,6 +144,11 @@ LBNET_API SOCKET __stdcall CreateListenSocket(LPCSTR pService)
 	}
 
 	freeaddrinfo(result);
+
+	if (protocol == IPPROTO_UDP)
+	{
+		return s;
+	}
 
 	if (listen(s, SOMAXCONN) == SOCKET_ERROR)
 	{

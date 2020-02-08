@@ -1,10 +1,74 @@
+    call OpenLBNetDLL
 
+    input "press ENTER to begin.";a
+
+    hSock = UDPCreateListenSocket("50000")
+    if IsSocketInvalid(hSock) then
+        print "UDPCreateListenSocket() failed. - ";GetError()
+        goto [doEnd]
+    end if
+
+    print "UDPCreateListenSocket() - ";hSock
+
+[recvLoop]
+    timer 0
+    print "Waiting for data..."
+    ret = UDPIsReadAvailable(hSock, 0)
+
+    if ret = 0 then
+        print "Still waiting..."
+
+        timer 1000, [recvLoop]
+        wait
+    end if
+
+    [doReceive]
+
+    bufLen = 1024
+    buf$ = space$(bufLen)
+
+    recvFrom$ = ""
+    num = UDPReceiveFrom(hSock, buf$, bufLen, recvFrom$)
+
+    if num = -1 then
+        theError = GetError()
+        if theError = 10101 then
+            print "Connection closed by server."
+        else
+            print "Socket error occurred. - ";dechex$(theError)
+        end if
+
+        goto [doClose]
+    end if
+
+    print "Data - ";left$(buf$, num)
+
+    sendNum = UDPSendTo(hSock, buf$, num, recvFrom$)
+    if sendNum = -1 then
+        theError = GetError()
+        print "UDPSendTo() failed. - ";dechex$(theError)
+        goto [doClose]
+    end if
+
+    if upper$(left$(buf$, 3)) = "END" then
+        print "END command received.  Closing socket."
+        goto [doClose]
+    end if
+
+    timer 1000, [recvLoop]
+    wait
+
+[doClose]
+    a = UDPClose(hSock)
+
+[doEnd]
+    call CloseLBNetDLL
 
 '====================
 '==Helper Functions==
 '====================
 Sub OpenLBNetDLL
-    open "LBNet.dll" for DLL as #LBNet
+    open "Debug\LBNet.dll" for DLL as #LBNet
     a = InitLBNet()
 End Sub
 
@@ -38,7 +102,7 @@ Function BeginTLSClientNoValidation(hTLS)
     CallDLL #LBNet, "BeginTLSClientNoValidation",_
     hTLS as ulong,_
     BeginTLSClientNoValidation as long
-End Function                          
+End Function
 
 Function BeginTLSClient(hTLS)
     CallDLL #LBNet, "BeginTLSClient",_
@@ -196,22 +260,22 @@ Function UDPConnect(host$, srv$, msTimeout)
     UDPConnect as long
 End Function
 
-Function UDPSend(udpSock, buf$, bufLen)
+Function UDPSend(sock, buf$, bufLen)
     CallDLL #LBNet, "UDPSend",_
-    udpSock as long,_
+    sock as long,_
     buf$ as ptr,_
     bufLen as long,_
     0 as long,_
     UDPSend as long
 End Function
 
-Function UDPSendTo(udpSock, buf$, bufLen, udpInfo$)
+Function UDPSendTo(sock, buf$, bufLen, udpInfo$)
     CallDLL #LBNet, "UDPSend",_
-    udpSock as long,_
+    sock as long,_
     buf$ as ptr,_
     bufLen as long,_
     udpInfo$ as ptr,_
-    UDPSendTo as long
+    UDPSend as long
 End Function
 
 Function UDPClose(udpSock)
@@ -257,4 +321,3 @@ Function UDPCreateListenSocket(pService$)
     pService$ as ptr,_
     UDPCreateListenSocket as long
 End Function
-

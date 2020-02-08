@@ -20,7 +20,7 @@
 [respLoop]
     timer 0
     print "Waiting for response..."
-    ret = IsUDPReadAvailable(hSock, 0)
+    ret = UDPIsReadAvailable(hSock, 0)
 
     if ret = 0 then
         print "Still waiting..."
@@ -275,9 +275,9 @@ Function UDPClose(udpSock)
     UDPClose as long
 End Function
 
-Function GetUDPInfoSize()
-    CallDLL #LBNet, "GetUDPInfoSize",_
-    GetUDPInfoSize as long
+Function UDPGetInfoSize()
+    CallDLL #LBNet, "UDPGetInfoSize",_
+    UDPGetInfoSize as long
 End Function
 
 Function UDPReceive(udpSock, byref buf$, bufLen)
@@ -290,7 +290,7 @@ Function UDPReceive(udpSock, byref buf$, bufLen)
 End Function
 
 Function UDPReceiveFrom(udpSock, byref buf$, bufLen, byref udpFrom$)
-    udpFrom$ = space$(GetUDPInfoSize())
+    udpFrom$ = space$(UDPGetInfoSize())
 
     CallDLL #LBNet, "UDPReceive",_
     udpSock as long,_
@@ -300,10 +300,15 @@ Function UDPReceiveFrom(udpSock, byref buf$, bufLen, byref udpFrom$)
     UDPReceiveFrom as long
 End Function
 
-Function IsUDPReadAvailable(udpSock, msTimeout)
-    CallDLL #LBNet, "IsUDPReadAvailable",_
+Function UDPIsReadAvailable(udpSock, msTimeout)
+    CallDLL #LBNet, "UDPIsReadAvailable",_
     udpSock as long,_
     msTimeout as long,_
-    IsUDPReadAvailable as long
+    UDPIsReadAvailable as long
 End Function
 
+Function UDPCreateListenSocket(pService$)
+    CallDLL #LBNet, "UDPCreateListenSocket",_
+    pService$ as ptr,_
+    UDPCreateListenSocket as long
+End Function

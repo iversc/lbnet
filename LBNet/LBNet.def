@@ -28,8 +28,9 @@ EXPORTS
 	PerformServerHandshake
 	BeginTLSServerWithPFX
 	UDPConnect
-	GetUDPInfoSize
+	UDPGetInfoSize
 	UDPSend
 	UDPClose
 	UDPReceive
-	IsUDPReadAvailable
+	UDPIsReadAvailable
+	UDPCreateListenSocket

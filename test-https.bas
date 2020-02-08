@@ -166,7 +166,7 @@
 
     responseHeaders$ = responseHeaders$ + "X-Request-Secure: " + secure$ + crlf$
 
-    open "output-4.html" for input as #file
+    open "output.html" for input as #file
     content$ = input$(#file, lof(#file))
     close #file
 
