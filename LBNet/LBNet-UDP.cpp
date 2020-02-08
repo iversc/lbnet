@@ -50,11 +50,8 @@ LBNET_API int __stdcall UDPReceive(PLBNetUDPSocket udpSock, LPSTR buffer, ULONG 
 	}
 
 	int retVal = recvfrom(udpSock->s, buffer, bufLen, 0, (PSOCKADDR)pSockAddr, pSockAddrLen);
-	
-	if (retVal == SOCKET_ERROR)
-	{
-		lastError = WSAGetLastError();
-	}
+
+	lastError = WSAGetLastError();
 
 	return retVal;
 }
