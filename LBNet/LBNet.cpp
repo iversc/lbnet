@@ -203,15 +203,6 @@ SOCKET ConnectInternal(LPCSTR pHost, LPCSTR pService, ULONG msTimeout, int proto
 		return INVALID_SOCKET;
 	}
 
-	//Initialize Winsock.
-	int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
-	if (iResult != 0)
-	{
-		//Winsock init failed.
-		lastError = iResult;
-		return INVALID_SOCKET;
-	}
-
 	int socktype = (protocol == IPPROTO_TCP) ? SOCK_STREAM : SOCK_DGRAM;
 
 	//Hints are used to tell getaddrinfo() what kind of socket we're intending to use

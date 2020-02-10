@@ -16,7 +16,6 @@
 
     print "UDPSend() - ";UDPSend(hSock, data$, lenData)
 
-    goto [doClose]
 [respLoop]
     timer 0
     print "Waiting for response..."
