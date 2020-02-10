@@ -16,7 +16,7 @@
 
     print "UDPSend() - ";UDPSend(hSock, data$, lenData)
 
-    'goto [doReceive]
+    goto [doClose]
 [respLoop]
     timer 0
     print "Waiting for response..."
@@ -29,7 +29,7 @@
         wait
     end if
 
-    [doReceive]
+[doReceive]
 
     bufLen = 1024
     buf$ = space$(bufLen)
@@ -38,15 +38,15 @@
     theError = GetError()
 
     if num = -1 then
-        if theError = 10101 then
-            print "Connection closed by server."
+        if theError = 10101 or theError = 10054 then
+            print "Connection closed or reset by peer."
         else
-            print "Socket error occurred. - ";dechex$(GetError())
+            print "Socket error occurred. - ";theError
         end if
 
         goto [doClose]
     end if
-    
+
     'With UDP, if a datagram comes in that is too large for the network stack
     'or the specified buffer to handle, the data will be truncated, and the extra data
     'is lost.  It will still return as many bytes as it can, but it will generate
@@ -72,7 +72,7 @@
 '==Helper Functions==
 '====================
 Sub OpenLBNetDLL
-    open "LBNet.dll" for DLL as #LBNet
+    open "Debug\LBNet.dll" for DLL as #LBNet
     a = InitLBNet()
 End Sub
 

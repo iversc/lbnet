@@ -1,9 +1,9 @@
 #include "stdafx.h"
 #include "LBNet.h"
 
-LBNET_API PLBNetUDPSocket __stdcall UDPConnect(LPCSTR pHost, LPCSTR pService, ULONG msTimeout)
+LBNET_API SOCKET __stdcall UDPConnect(LPCSTR pHost, LPCSTR pService, ULONG msTimeout)
 {
-	return (PLBNetUDPSocket)ConnectInternal(pHost, pService, msTimeout, IPPROTO_UDP);
+	return ConnectInternal(pHost, pService, msTimeout, IPPROTO_UDP);
 }
 
 LBNET_API UINT __stdcall UDPGetInfoSize()
@@ -11,23 +11,19 @@ LBNET_API UINT __stdcall UDPGetInfoSize()
 	return sizeof(LBNetUDPInfo);
 }
 
-LBNET_API int __stdcall UDPSend(PLBNetUDPSocket udpSock, LPCSTR buffer, ULONG bufLen, PLBNetUDPInfo udpInfo)
+LBNET_API int __stdcall UDPSend(SOCKET s, LPCSTR buffer, ULONG bufLen, PLBNetUDPInfo udpInfo)
 {
 	PSOCKADDR_STORAGE pSockAddr = NULL;
 	int sockAddrLen = 0;
+	int retVal = 0;
 
 	if (udpInfo)
 	{
 		pSockAddr = &udpInfo->sockaddr;
 		sockAddrLen = udpInfo->sockaddrLen;
 	}
-	else
-	{
-		pSockAddr = &udpSock->udpInfo.sockaddr;
-		sockAddrLen = udpSock->udpInfo.sockaddrLen;
-	}
 
-	int retVal = sendto(udpSock->s, buffer, bufLen, 0, (PSOCKADDR)pSockAddr, sockAddrLen);
+	retVal = sendto(s, buffer, bufLen, 0, (PSOCKADDR)pSockAddr, sockAddrLen);
 
 	if (retVal == SOCKET_ERROR)
 	{
@@ -37,10 +33,11 @@ LBNET_API int __stdcall UDPSend(PLBNetUDPSocket udpSock, LPCSTR buffer, ULONG bu
 	return retVal;
 }
 
-LBNET_API int __stdcall UDPReceive(PLBNetUDPSocket udpSock, LPSTR buffer, ULONG bufLen, PLBNetUDPInfo udpInfo)
+LBNET_API int __stdcall UDPReceive(SOCKET s, LPSTR buffer, ULONG bufLen, PLBNetUDPInfo udpInfo)
 {
 	PSOCKADDR_STORAGE pSockAddr = NULL;
 	PINT pSockAddrLen = 0;
+	int retVal = 0;
 
 	if (udpInfo)
 	{
@@ -49,31 +46,14 @@ LBNET_API int __stdcall UDPReceive(PLBNetUDPSocket udpSock, LPSTR buffer, ULONG 
 		*pSockAddrLen = sizeof(SOCKADDR_STORAGE);
 	}
 
-	int retVal = recvfrom(udpSock->s, buffer, bufLen, 0, (PSOCKADDR)pSockAddr, pSockAddrLen);
+	retVal = recvfrom(s, buffer, bufLen, 0, (PSOCKADDR)pSockAddr, pSockAddrLen);
 
 	lastError = WSAGetLastError();
 
 	return retVal;
 }
 
-LBNET_API int __stdcall UDPClose(PLBNetUDPSocket udpSock)
+LBNET_API SOCKET __stdcall UDPCreateListenSocket(LPCSTR pService)
 {
-	int retVal = closesocket(udpSock->s);
-	delete udpSock;
-
-	return retVal;
-}
-
-LBNET_API BOOL __stdcall UDPIsReadAvailable(PLBNetUDPSocket udpSock, int msTimeout)
-{
-	return IsReadAvailable(udpSock->s, msTimeout);
-}
-
-LBNET_API PLBNetUDPSocket __stdcall UDPCreateListenSocket(LPCSTR pService)
-{
-	PLBNetUDPSocket udpSock = new LBNetUDPSocket();
-
-	udpSock->s = CreateListenSocketInternal(pService, IPPROTO_UDP);
-
-	return udpSock;
+	return CreateListenSocketInternal(pService, IPPROTO_UDP);
 }

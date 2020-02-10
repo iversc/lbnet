@@ -29,20 +29,21 @@
 
     recvFrom$ = ""
     num = UDPReceiveFrom(hSock, buf$, bufLen, recvFrom$)
-    
+
     theError = GetError()
 
     if num = -1 then
 
-        if theError = 10101 then
-            print "Connection closed by server."
+        if theError = 10101 or theError = 10054 then
+            print "Connection closed or reset by peer."
+            goto [recvLoop]
         else
-            print "Socket error occurred. - ";dechex$(theError)
+            print "Socket error occurred. - ";theError
         end if
 
         goto [doClose]
     end if
-    
+
     'With UDP, if a datagram comes in that is too large for the network stack
     'or the specified buffer to handle, the data will be truncated, and the extra data
     'is lost.  It will still return as many bytes as it can, but it will generate
@@ -59,7 +60,7 @@
     sendNum = UDPSendTo(hSock, buf$, num, recvFrom$)
     if sendNum = -1 then
         theError = GetError()
-        print "UDPSendTo() failed. - ";dechex$(theError)
+        print "UDPSendTo() failed. - ";theError
         goto [doClose]
     end if
 
@@ -83,7 +84,7 @@
 '==Helper Functions==
 '====================
 Sub OpenLBNetDLL
-    open "LBNet.dll" for DLL as #LBNet
+    open "Debug\LBNet.dll" for DLL as #LBNet
     a = InitLBNet()
 End Sub
 

@@ -30,7 +30,7 @@ EXPORTS
 	UDPConnect
 	UDPGetInfoSize
 	UDPSend
-	UDPClose
+	UDPClose=CloseSocket
 	UDPReceive
-	UDPIsReadAvailable
+	UDPIsReadAvailable=IsReadAvailable
 	UDPCreateListenSocket

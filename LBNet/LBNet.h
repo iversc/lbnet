@@ -43,9 +43,3 @@ typedef struct LBNetUDPInfo
 	SOCKADDR_STORAGE sockaddr;
 	int	sockaddrLen;
 } *PLBNetUDPInfo;
-
-typedef struct LBNetUDPSocket
-{
-	SOCKET s;
-	LBNetUDPInfo udpInfo;
-} *PLBNetUDPSocket;
