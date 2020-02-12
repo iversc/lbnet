@@ -258,3 +258,19 @@ Function UDPCreateListenSocket(pService$)
     UDPCreateListenSocket as long
 End Function
 
+Function UDPGetRemoteIP$(udpInfo$)
+    UDPGetRemoteIP$ = ""
+
+    CallDLL #LBNet, "UDPGetRemoteIP",_
+    udpInfo$ as ptr,_
+    ret as ulong
+
+    If ret <> 0 then UDPGetRemoteIP$ = winstring(ret)
+End Function
+
+Function UDPGetRemotePort(udpInfo$)
+    CallDLL #LBNet, "UDPGetRemotePort",_
+    udpInfo$ as ptr,_
+    UDPGetRemotePort as long
+End Function
+
