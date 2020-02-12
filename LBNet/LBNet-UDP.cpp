@@ -1,6 +1,9 @@
 #include "stdafx.h"
 #include "LBNet.h"
 
+#define IPADDR_BUF_SIZE INET6_ADDRSTRLEN  //46 character string needed to hold an IPv6 address
+char ipAddrBuf[IPADDR_BUF_SIZE];
+
 LBNET_API SOCKET __stdcall UDPConnect(LPCSTR pHost, LPCSTR pService, ULONG msTimeout)
 {
 	return ConnectInternal(pHost, pService, msTimeout, IPPROTO_UDP);
@@ -56,4 +59,30 @@ LBNET_API int __stdcall UDPReceive(SOCKET s, LPSTR buffer, ULONG bufLen, PLBNetU
 LBNET_API SOCKET __stdcall UDPCreateListenSocket(LPCSTR pService)
 {
 	return CreateListenSocketInternal(pService, IPPROTO_UDP);
+}
+
+LBNET_API LPCSTR __stdcall UDPGetRemoteIP(PLBNetUDPInfo udpInfo)
+{
+	ZeroMemory(ipAddrBuf, IPADDR_BUF_SIZE);
+	PCSTR retVal = NULL;
+
+	if (udpInfo->sockaddr.ss_family == AF_INET6)
+	{
+		PSOCKADDR_IN6 sockAddr = (PSOCKADDR_IN6)&udpInfo->sockaddr;
+		retVal = inet_ntop(AF_INET6, &sockAddr->sin6_addr, ipAddrBuf, IPADDR_BUF_SIZE);
+	}
+	else
+	{
+		PSOCKADDR_IN sockAddr = (PSOCKADDR_IN)&udpInfo->sockaddr;
+		retVal = inet_ntop(AF_INET, &sockAddr->sin_addr, ipAddrBuf, IPADDR_BUF_SIZE);
+	}
+
+	lastError = WSAGetLastError();
+
+	return retVal;
+}
+
+LBNET_API int __stdcall UDPGetRemotePort(PLBNetUDPInfo udpInfo)
+{
+	return ntohs(((PSOCKADDR_IN)&udpInfo->sockaddr)->sin_port);
 }

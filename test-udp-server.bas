@@ -55,6 +55,7 @@
         print "Received message too large for buffer or other network limit.  Datagram truncated, extra data lost."
     end if
 
+    print "From IP: ";UDPGetRemoteIP$(recvFrom$);" - Port: ";UDPGetRemotePort(recvFrom$)
     print "Data - ";left$(buf$, num)
 
     sendNum = UDPSendTo(hSock, buf$, num, recvFrom$)
@@ -188,3 +189,18 @@ Function UDPCreateListenSocket(pService$)
     UDPCreateListenSocket as long
 End Function
 
+Function UDPGetRemoteIP$(udpInfo$)
+    UDPGetRemoteIP$ = ""
+
+    CallDLL #LBNet, "UDPGetRemoteIP",_
+    udpInfo$ as ptr,_
+    ret as ulong
+
+    If ret <> 0 then UDPGetRemoteIP$ = winstring(ret)
+End Function
+
+Function UDPGetRemotePort(udpInfo$)
+    CallDLL #LBNet, "UDPGetRemotePort",_
+    udpInfo$ as ptr,_
+    UDPGetRemotePort as long
+End Function

@@ -34,3 +34,5 @@ EXPORTS
 	UDPReceive
 	UDPIsReadAvailable=IsReadAvailable
 	UDPCreateListenSocket
+	UDPGetRemoteIP
+	UDPGetRemotePort
