@@ -36,3 +36,5 @@ EXPORTS
 	UDPCreateListenSocket
 	UDPGetRemoteIP
 	UDPGetRemotePort
+	UDPConnectFrom
+	ConnectFrom

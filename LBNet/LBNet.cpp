@@ -188,10 +188,15 @@ LBNET_API SOCKET __stdcall AcceptConnection(SOCKET sock, LPSTR buffer, ULONG buf
 
 LBNET_API SOCKET __stdcall Connect(LPCSTR pHost, LPCSTR pService, ULONG msTimeout)
 {
-	return ConnectInternal(pHost, pService, msTimeout, IPPROTO_TCP);
+	return ConnectInternal(pHost, pService, msTimeout, NULL, IPPROTO_TCP);
 }
 
-SOCKET ConnectInternal(LPCSTR pHost, LPCSTR pService, ULONG msTimeout, int protocol)
+LBNET_API SOCKET __stdcall ConnectFrom(LPCSTR pHost, LPCSTR pService, ULONG msTimeout, LPCSTR pLocalService)
+{
+	return ConnectInternal(pHost, pService, msTimeout, pLocalService, IPPROTO_TCP);
+}
+
+SOCKET ConnectInternal(LPCSTR pHost, LPCSTR pService, ULONG msTimeout, LPCSTR pLocalService, int protocol)
 {
 	TIMEVAL tv = TIMEVAL();
 	//Make sure we were actually passed strings to use.
@@ -269,6 +274,39 @@ SOCKET ConnectInternal(LPCSTR pHost, LPCSTR pService, ULONG msTimeout, int proto
 			}
 		}
 
+		if (pLocalService != NULL) {
+			hints.ai_family = ptr->ai_family;
+			hints.ai_flags = AI_PASSIVE;
+
+			addrinfo* bindResult = NULL;
+			addrinfo* bindPtr = NULL;
+
+			DWORD dwResult = getaddrinfo(NULL, pLocalService, &hints, &bindResult);
+			if (dwResult != 0)
+			{
+				//getaddrinfo() failed.
+				lastError = dwResult;
+				return INVALID_SOCKET;
+			}
+
+			bool boundFlag = false;
+
+			for (bindPtr = bindResult; bindPtr != NULL; bindPtr = bindPtr->ai_next)
+			{
+				if (bind(s, bindPtr->ai_addr, bindPtr->ai_addrlen) != SOCKET_ERROR)
+				{
+					boundFlag = true;
+				}
+			}
+
+			if (!boundFlag)
+			{
+				lastError = WSAGetLastError();
+				closesocket(s);
+				return INVALID_SOCKET;
+			}
+		}
+
 		if (connect(s, ptr->ai_addr, ptr->ai_addrlen) != SOCKET_ERROR)
 		{
 			freeaddrinfo(result);
@@ -321,6 +359,12 @@ SOCKET ConnectInternal(LPCSTR pHost, LPCSTR pService, ULONG msTimeout, int proto
 						s = INVALID_SOCKET;
 					}
 				}
+			}
+
+			if (pLocalService != NULL && s != INVALID_SOCKET)
+			{
+				closesocket(s);
+				s = INVALID_SOCKET;
 			}
 		}
 	}

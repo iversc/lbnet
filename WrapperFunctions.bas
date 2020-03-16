@@ -135,6 +135,15 @@ Function Connect(host$, srv$, msTimeout)
     Connect as long
 End Function
 
+Function ConnectFrom(host$, srv$, msTimeout, localSrv$)
+    CallDLL #LBNet, "ConnectFrom",_
+    host$ as ptr,_
+    srv$ as ptr,_
+    msTimeout as long,_
+    localSrv$ as ptr,_
+    ConnectFrom as long
+End Function
+
 Function CloseSocket(sock)
     CallDLL #LBNet, "CloseSocket",_
     sock as long,_
@@ -194,6 +203,15 @@ Function UDPConnect(host$, srv$, msTimeout)
     srv$ as ptr,_
     msTimeout as long,_
     UDPConnect as long
+End Function
+
+Function UDPConnectFrom(host$, srv$, msTimeout, localSrv$)
+    CallDLL #LBNet, "UDPConnectFrom",_
+    host$ as ptr,_
+    srv$ as ptr,_
+    msTimeout as long,_
+    localSrv$ as ptr,_
+    UDPConnectFrom as long
 End Function
 
 Function UDPSend(udpSock, buf$, bufLen)

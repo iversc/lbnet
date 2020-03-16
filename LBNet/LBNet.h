@@ -20,7 +20,7 @@ void WriteDebugLog(LPCSTR function, LPCSTR message);
 #endif
 
 LBNET_API BOOL __stdcall IsReadAvailable(SOCKET sock, int msTimeout);
-SOCKET ConnectInternal(LPCSTR pHost, LPCSTR pService, ULONG msTimeout, int protocol);
+SOCKET ConnectInternal(LPCSTR pHost, LPCSTR pService, ULONG msTimeout, LPCSTR pLocalService, int protocol);
 SOCKET CreateListenSocketInternal(LPCSTR pService, int protocol);
 
 

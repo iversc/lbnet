@@ -6,7 +6,12 @@ char ipAddrBuf[IPADDR_BUF_SIZE];
 
 LBNET_API SOCKET __stdcall UDPConnect(LPCSTR pHost, LPCSTR pService, ULONG msTimeout)
 {
-	return ConnectInternal(pHost, pService, msTimeout, IPPROTO_UDP);
+	return ConnectInternal(pHost, pService, msTimeout, NULL, IPPROTO_UDP);
+}
+
+LBNET_API SOCKET __stdcall UDPConnectFrom(LPCSTR pHost, LPCSTR pService, ULONG msTimeout, LPCSTR pLocalService)
+{
+	return ConnectInternal(pHost, pService, msTimeout, pLocalService, IPPROTO_UDP);
 }
 
 LBNET_API UINT __stdcall UDPGetInfoSize()
