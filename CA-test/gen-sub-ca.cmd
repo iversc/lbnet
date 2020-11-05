@@ -10,4 +10,8 @@ openssl genrsa -out sub-ca\private\sub-ca.key 4096
 
 openssl req -new -config sub-ca.conf -key sub-ca\private\sub-ca.key -out sub-ca\csr\sub-ca.csr
 
-openssl ca -batch -config root-ca.conf -in sub-ca\csr\sub-ca.csr -out sub-ca\certs\sub-ca.crt -extensions v3_intermediate_ca 
+openssl ca -batch -config root-ca.conf -in sub-ca\csr\sub-ca.csr -out sub-ca\certs\sub-ca.crt -extensions v3_intermediate_ca
+
+openssl x509 -in sub-ca\certs\sub-ca.crt -out sub-ca\certs\chain.pem -outform pem
+
+openssl x509 -in root-ca\certs\root-ca.crt -outform pem >> sub-ca\certs\chain.pem
