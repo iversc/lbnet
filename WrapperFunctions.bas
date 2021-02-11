@@ -1,5 +1,4 @@
 
-
 '====================
 '==Helper Functions==
 '====================
@@ -38,7 +37,7 @@ Function BeginTLSClientNoValidation(hTLS)
     CallDLL #LBNet, "BeginTLSClientNoValidation",_
     hTLS as ulong,_
     BeginTLSClientNoValidation as long
-End Function                          
+End Function
 
 Function BeginTLSClient(hTLS)
     CallDLL #LBNet, "BeginTLSClient",_
@@ -292,3 +291,15 @@ Function UDPGetRemotePort(udpInfo$)
     UDPGetRemotePort as long
 End Function
 
+Function GetErrorText$(errnum)
+    bufSize = 1024
+    buf$ = space$(bufSize)
+
+    CallDLL #kernel32, "FormatMessageA",_
+    _FORMAT_MESSAGE_FROM_SYSTEM as long,_
+    0 as long, errnum as long, 0 as long,_
+    buf$ as ptr, bufSize as long, 0 as long,_
+    ret as long
+
+    GetErrorText$ = left$(buf$, ret)
+End Function
