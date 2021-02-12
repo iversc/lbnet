@@ -11,6 +11,7 @@ This doc covers basic sockets usage, in both TCP and UDP. The other doc included
   - [API Functions Index](#api-functions-index)
     - [**General Functions**](#general-functions)
       - [**`CloseLBNetDLL`**](#closelbnetdll)
+      - [**`EndLBNet()`**](#endlbnet)
       - [**`GetError()`**](#geterror)
       - [**`GetErrorText$(errnum)`**](#geterrortexterrnum)
       - [**`InitLBNet()`**](#initlbnet)
@@ -66,6 +67,17 @@ call CloseLBNetDLL
 ```
 
 
+#### **`EndLBNet()`**
+Runs cleanup for all LBNet library data. Must be the last thing called before closing the library.
+
+##### Parameters: <!-- omit in toc -->
+None.
+
+##### Return value: <!-- omit in toc -->
+Zero if termination is successful, and `SOCKET_ERROR(-1)` otherwise. The error code can be retrieved with [`GetError()`](#geterror).
+
+
+
 #### **`GetError()`**
 Retrieves the last error code set by the LBNet library.
 
@@ -109,7 +121,7 @@ This causes confusion with LB when returning `INVALID_SOCKET`, and causes it to 
 When checking returns from functions that return sockets, you can either check them against 0xFFFFFFFF, or call this function with the value.
 
 ##### Parameters: <!-- omit in toc -->
-`sock`: A socket or server/listen socket returned from [`Connect()`](#connecthost-srv-mstimeout), [`ConnectFrom()`](#connectfromhost-srv-mstimeout-localsrv), [`CreateListenSocket()`](#createlistensocketpservice), [`UDPConnect()`](#udpconnecthost-srv-mstimeout), [`UDPConnectFrom()`](#udpconnectfromhost-srv-mstimeout-localsrv), or [`UDPCreateListenSocket`](#udpcreatelistensocketpservice).
+`sock`: A socket or server/listen socket returned from [`Connect()`](#connecthost-srv-mstimeout), [`ConnectFrom()`](#connectfromhost-srv-mstimeout-localsrv), [`CreateListenSocket()`](#createlistensocketpservice), [`UDPConnect()`](#udpconnecthost-srv-mstimeout), [`UDPConnectFrom()`](#udpconnectfromhost-srv-mstimeout-localsrv), or [`UDPCreateListenSocket()`](#udpcreatelistensocketpservice).
 
 ##### Return value: <!-- omit in toc -->
 One(1) if the specified socket is `INVALID_SOCKET`, zero(0) otherwise.
@@ -303,9 +315,39 @@ Size of the UDP data blob, in bytes.
 
 
 #### **`UDPGetRemoteIP$(udpInfo$)`**
+Gets the IP address from a UDP data blob.
+
+##### Parameters: <!-- omit in toc -->
+`udpInfo$`: UDP data blob returned from [`UDPReceiveFrom()`](#udpreceivefromudpsock-byref-buf-buflen-byref-udpfrom)
+
+##### Return value: <!-- omit in toc -->
+A string containing the IP address of the connected peer.
+
+
+
 #### **`UDPGetRemotePort(udpInfo$)`**
+Gets the port number from a UDP data blob.
+
+##### Parameters: <!-- omit in toc -->
+`udpInfo$`: UDP data blob returned from [`UDPReceiveFrom()`](#udpreceivefromudpsock-byref-buf-buflen-byref-udpfrom)
+
+##### Return value: <!-- omit in toc -->
+A the port number of the connected peer.
+
+
+
 #### **`UDPIsReadAvailable(udpSock, msTimeout)`**
+This function is the UDP equivalent of [`IsReadAvailable()`](#isreadavailablesocket-mstimeout).
+
+
+
 #### **`UDPReceive(udpSock, byref buf$, bufLen)`**
+This function is the UDP equivalent of [`Send()`](#sendsock-msg-msglen).
+
+**Important:** This function can only be used on client UDP sockets returned from [`UDPConnect()`](#udpconnecthost-srv-mstimeout) and [`UDPConnectFrom()`](#udpconnectfromhost-srv-mstimeout-localsrv). To receive data from UDP server/listen sockets created with [`UDPCreateListenSocket()`](#udpcreatelistensocketpservice), you _must_ use the function [`UDPReceiveFrom()`](#udpreceivefromudpsock-byref-buf-buflen-byref-udpfrom).
+
+
+
 #### **`UDPReceiveFrom(udpSock, byref buf$, bufLen, byref udpFrom$)`**
 #### **`UDPSend(udpSock, buf$, bufLen)`**
 #### **`UDPSendTo(udpSock, buf$, bufLen, udpInfo$)`**
