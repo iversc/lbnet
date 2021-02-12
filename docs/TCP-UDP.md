@@ -8,6 +8,7 @@ This doc covers basic sockets usage, in both TCP and UDP. The other doc included
 ## Table of Contents
 - [LBNet API Reference](#lbnet-api-reference)
   - [Table of Contents](#table-of-contents)
+  - [Sockets Overview](#sockets-overview)
   - [API Functions Index](#api-functions-index)
     - [**General Functions**](#general-functions)
       - [**`CloseLBNetDLL`**](#closelbnetdll)
@@ -41,6 +42,10 @@ This doc covers basic sockets usage, in both TCP and UDP. The other doc included
       - [**`UDPSend(udpSock, buf$, bufLen)`**](#udpsendudpsock-buf-buflen)
       - [**`UDPSendTo(udpSock, buf$, bufLen, udpInfo$)`**](#udpsendtoudpsock-buf-buflen-udpinfo)
 
+
+---
+
+## Sockets Overview
 
 ---
 
@@ -342,13 +347,57 @@ This function is the UDP equivalent of [`IsReadAvailable()`](#isreadavailablesoc
 
 
 #### **`UDPReceive(udpSock, byref buf$, bufLen)`**
-This function is the UDP equivalent of [`Send()`](#sendsock-msg-msglen).
+This function is the UDP equivalent of [`Receive()`](#receivesock-byref-buf-buflen)
 
 **Important:** This function can only be used on client UDP sockets returned from [`UDPConnect()`](#udpconnecthost-srv-mstimeout) and [`UDPConnectFrom()`](#udpconnectfromhost-srv-mstimeout-localsrv). To receive data from UDP server/listen sockets created with [`UDPCreateListenSocket()`](#udpcreatelistensocketpservice), you _must_ use the function [`UDPReceiveFrom()`](#udpreceivefromudpsock-byref-buf-buflen-byref-udpfrom).
+
+Additionally, because UDP is an unreliable protocol by design, if there is a problem in retrieving data, the message is simply lost.
+
+An important difference between TCP and UDP resulting from this is if you specify a buffer that is too small to hold all the data available in the message.
+
+For a TCP stream, [`Receive()`](#receivesock-byref-buf-buflen) will simply fill the buffer, and the rest of the data in the stream is withheld by the system until the next time you call [`Receive()`](#receivesock-byref-buf-buflen).
+
+For a UDP stream, [`UDPReceive()`](#udpreceiveudpsock-byref-buf-buflen) and [`UDPReceiveFrom()`](#udpreceivefromudpsock-byref-buf-buflen-byref-udpfrom) will fill the buffer, and _discard_ the rest of the message that doesn't fit.  It will then return `SOCKET_ERROR(-1)`, with the error code from [`GetError()`](#geterror) being `WSAEMSGSIZE(10040)`.
 
 
 
 #### **`UDPReceiveFrom(udpSock, byref buf$, bufLen, byref udpFrom$)`**
-#### **`UDPSend(udpSock, buf$, bufLen)`**
-#### **`UDPSendTo(udpSock, buf$, bufLen, udpInfo$)`**
+This function receives data from a listening UDP socket, returning both the data and a blob that identifies the sender of the data so a response can be sent.
 
+##### Parameters: <!-- omit in toc -->
+`udpSock`: A UDP socket, returned from [`UDPConnect()`](#udpconnecthost-srv-mstimeout), [`UDPConnectFrom()`](#udpconnectfromhost-srv-mstimeout-localsrv), or [`UDPCreateListenSocket()`](#udpcreatelistensocketpservice).
+
+`buf$`: A buffer that the data retrieved from the socket will be written to.
+
+`bufLen`: The length of the buffer passed in to `buf$`.
+
+`udpFrom$`: A blob that identifies the sender of the data.
+
+##### Return value: <!-- omit in toc -->
+The number of bytes written to `buf$`. If an error occurs, it will return `SOCKET_ERROR(-1)`, and a specific error code can be retrieved with [`GetError()`](#geterror).
+
+The additional notes under [`UDPReceive()`](#udpreceiveudpsock-byref-buf-buflen) apply here, as well.
+
+
+
+#### **`UDPSend(udpSock, buf$, bufLen)`**
+This function is the UDP equivalent of [`Send()`](#sendsock-msg-msglen).
+
+**Important:** This function can only be used on client UDP sockets returned from [`UDPConnect()`](#udpconnecthost-srv-mstimeout) and [`UDPConnectFrom()`](#udpconnectfromhost-srv-mstimeout-localsrv). To send data over UDP server/listen sockets created with [`UDPCreateListenSocket()`](#udpcreatelistensocketpservice), you _must_ use the function [`UDPSendTo()`](#udpsendtoudpsock-buf-buflen-udpinfo).
+
+
+
+#### **`UDPSendTo(udpSock, buf$, bufLen, udpInfo$)`**
+This function is used to respond to messages sent to a server/listen socket opened with [`UDPCreateListenSocket()`](#udpcreatelistensocketpservice).
+
+##### Parameters: <!-- omit in toc -->
+`udpSock`: A UDP socket, returned from [`UDPConnect()`](#udpconnecthost-srv-mstimeout), [`UDPConnectFrom()`](#udpconnectfromhost-srv-mstimeout-localsrv), or [`UDPCreateListenSocket()`](#udpcreatelistensocketpservice).
+
+`buf$`: A buffer containing the data to send.
+
+`bufLen`: The length of the data to send in `buf$`.
+
+`udpFrom$`: A blob that identifies where the data should be sent, returned by [`UDPReceiveFrom()`](#udpreceivefromudpsock-byref-buf-buflen-byref-udpfrom) when a message is received.
+
+##### Return value: <!-- omit in toc -->
+The number of bytes transmitted. If an error occurs, `SOCKET_ERROR(-1)` is returned, and a specific error message can be retrieved from [`GetError()`](#geterror).
