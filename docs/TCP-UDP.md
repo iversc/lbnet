@@ -10,7 +10,7 @@ This doc covers basic sockets usage, in both TCP and UDP. The other doc included
   - [Table of Contents](#table-of-contents)
   - [API Functions Index](#api-functions-index)
     - [**General Functions**](#general-functions)
-    - [**`CloseLBNetDLL`**](#closelbnetdll)
+      - [**`CloseLBNetDLL`**](#closelbnetdll)
     - [**`GetError()`**](#geterror)
     - [**`GetErrorText$(errnum)`**](#geterrortexterrnum)
     - [**`InitLBNet()`**](#initlbnet)
@@ -52,13 +52,13 @@ Functions in this section either relate to both TCP and UDP communications, or a
 
 
 
-### **`CloseLBNetDLL`**
+#### **`CloseLBNetDLL`**
 A helper subroutine for terminating and closing the LBNet library. Use in conjunction with [`OpenLBNetDLL`](#openlbnetdll). This will automatically call the [`EndLBNet()`](#endlbnet) function to clean up, and then will close the handle to the LBNet library(`close #LBNet`).
 
-#### Parameters: <!-- omit in toc -->
+##### Parameters: <!-- omit in toc -->
 None.
 
-#### Return value: <!-- omit in toc -->
+##### Return value: <!-- omit in toc -->
 None, this is a `SUB` invoked with the `call` statement.
 
 ```
