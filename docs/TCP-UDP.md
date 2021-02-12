@@ -9,25 +9,36 @@ This doc covers basic sockets usage, in both TCP and UDP. The other doc included
 - [LBNet API Reference](#lbnet-api-reference)
   - [Table of Contents](#table-of-contents)
   - [API Functions Index](#api-functions-index)
-    - [General Functions](#general-functions)
-    - [`CloseLBNetDLL`](#closelbnetdll)
-    - [`GetError()`](#geterror)
-    - [`GetErrorText$(errnum)`](#geterrortexterrnum)
-    - [`InitLBNet()`](#initlbnet)
-    - [`IsSocketInvalid(sock)`](#issocketinvalidsock)
-    - [`OpenLBNetDLL`](#openlbnetdll)
-    - [`PingHost(host$, packetSize, byref status, byref msResponse, msTimeout)`](#pinghosthost-packetsize-byref-status-byref-msresponse-mstimeout)
-    - [TCP Functions](#tcp-functions)
-    - [`AcceptConnection(ServerSocket)`](#acceptconnectionserversocket)
-    - [`CloseSocket(sock)`](#closesocketsock)
-    - [`Connect(host$, srv$, msTimeout)`](#connecthost-srv-mstimeout)
-    - [`ConnectFrom(host$, srv$, msTimeout, localSrv$)`](#connectfromhost-srv-mstimeout-localsrv)
-    - [`CreateListenSocket(pService$)`](#createlistensocketpservice)
-    - [`IsReadAvailable(socket, msTimeout)`](#isreadavailablesocket-mstimeout)
-    - [`Receive(sock, byref buf$, bufLen)`](#receivesock-byref-buf-buflen)
-    - [`Send(sock, msg$, msgLen)`](#sendsock-msg-msglen)
-    - [UDP Functions](#udp-functions)
-    - [`UDPClose(udpSock)`](#udpcloseudpsock)
+    - [**General Functions**](#general-functions)
+    - [**`CloseLBNetDLL`**](#closelbnetdll)
+    - [**`GetError()`**](#geterror)
+    - [**`GetErrorText$(errnum)`**](#geterrortexterrnum)
+    - [**`InitLBNet()`**](#initlbnet)
+    - [**`IsSocketInvalid(sock)`**](#issocketinvalidsock)
+    - [**`OpenLBNetDLL`**](#openlbnetdll)
+    - [**`PingHost(host$, packetSize, byref status, byref msResponse, msTimeout)`**](#pinghosthost-packetsize-byref-status-byref-msresponse-mstimeout)
+    - [**TCP Functions**](#tcp-functions)
+    - [**`AcceptConnection(ServerSocket)`**](#acceptconnectionserversocket)
+    - [**`CloseSocket(sock)`**](#closesocketsock)
+    - [**`Connect(host$, srv$, msTimeout)`**](#connecthost-srv-mstimeout)
+    - [**`ConnectFrom(host$, srv$, msTimeout, localSrv$)`**](#connectfromhost-srv-mstimeout-localsrv)
+    - [**`CreateListenSocket(pService$)`**](#createlistensocketpservice)
+    - [**`IsReadAvailable(socket, msTimeout)`**](#isreadavailablesocket-mstimeout)
+    - [**`Receive(sock, byref buf$, bufLen)`**](#receivesock-byref-buf-buflen)
+    - [**`Send(sock, msg$, msgLen)`**](#sendsock-msg-msglen)
+    - [**UDP Functions**](#udp-functions)
+    - [**`UDPClose(udpSock)`**](#udpcloseudpsock)
+    - [**`UDPConnect(host$, srv$, msTimeout)`**](#udpconnecthost-srv-mstimeout)
+    - [**`UDPConnectFrom(host$, srv$, msTimeout, localSrv$)`**](#udpconnectfromhost-srv-mstimeout-localsrv)
+    - [**`UDPCreateListenSocket(pService$)`**](#udpcreatelistensocketpservice)
+    - [**`UDPGetInfoSize()`**](#udpgetinfosize)
+    - [**`UDPGetRemoteIP$(udpInfo$)`**](#udpgetremoteipudpinfo)
+    - [**`UDPGetRemotePort(udpInfo$)`**](#udpgetremoteportudpinfo)
+    - [**`UDPIsReadAvailable(udpSock, msTimeout)`**](#udpisreadavailableudpsock-mstimeout)
+    - [**`UDPReceive(udpSock, byref buf$, bufLen)`**](#udpreceiveudpsock-byref-buf-buflen)
+    - [**`UDPReceiveFrom(udpSock, byref buf$, bufLen, byref udpFrom$)`**](#udpreceivefromudpsock-byref-buf-buflen-byref-udpfrom)
+    - [**`UDPSend(udpSock, buf$, bufLen)`**](#udpsendudpsock-buf-buflen)
+    - [**`UDPSendTo(udpSock, buf$, bufLen, udpInfo$)`**](#udpsendtoudpsock-buf-buflen-udpinfo)
 
 
 ---
@@ -36,12 +47,12 @@ This doc covers basic sockets usage, in both TCP and UDP. The other doc included
 This section is a listing of the functions provided by the library, and their usage. The functions are in alphabetical order.
 
 ---
-### General Functions
+### **General Functions**
 Functions in this section either relate to both TCP and UDP communications, or are specific to the LBNet library.
 
 
 
-### `CloseLBNetDLL`
+### **`CloseLBNetDLL`**
 A helper subroutine for terminating and closing the LBNet library. Use in conjunction with [`OpenLBNetDLL`](#openlbnetdll). This will automatically call the [`EndLBNet()`](#endlbnet) function to clean up, and then will close the handle to the LBNet library(`close #LBNet`).
 
 #### Parameters: <!-- omit in toc -->
@@ -55,7 +66,7 @@ call CloseLBNetDLL
 ```
 
 
-### `GetError()`
+### **`GetError()`**
 Retrieves the last error code set by the LBNet library.
 
 #### Parameters: <!-- omit in toc -->
@@ -66,7 +77,7 @@ The last error code set by the LBNet library.
 
 
 
-### `GetErrorText$(errnum)`
+### **`GetErrorText$(errnum)`**
 Retrieves a descriptive error message for the error code specified.
 
 #### Parameters: <!-- omit in toc -->
@@ -77,7 +88,7 @@ A string containing the error message that corresponds to the error code specifi
 
 
 
-### `InitLBNet()`
+### **`InitLBNet()`**
 Initializes the LBNet library. Must be the first thing called.
 
 #### Parameters: <!-- omit in toc -->
@@ -88,7 +99,7 @@ Zero if initialization is successful, and an error code otherwise. The error mes
 
 
 
-### `IsSocketInvalid(sock)`
+### **`IsSocketInvalid(sock)`**
 Checks whether or not the specified socket value is `INVALID_SOCKET`.
 
 The reason this function exists is because of LB's flexibility with types. `INVALID_SOCKET` is declared as -1, but because the only valid socket values are positive, the types of all sockets in my functions are declared as unsigned.
@@ -105,7 +116,7 @@ One(1) if the specified socket is `INVALID_SOCKET`, zero(0) otherwise.
 
 
 
-### `OpenLBNetDLL`
+### **`OpenLBNetDLL`**
 A helper subroutine for opening and initializing the LBNet library. Use in conjunction with [`CloseLBNetDLL`](#closelbnetdll). This will automatically open a handle to the LBNet library(`open "LBNet.dll" for DLL as #LBNet`), and call the [`InitLBNet()`](#initlbnet) function to initialize LBNet.
 
 #### Parameters: <!-- omit in toc -->
@@ -120,7 +131,7 @@ call OpenLBNetDLL
 
 
 
-### `PingHost(host$, packetSize, byref status, byref msResponse, msTimeout)`
+### **`PingHost(host$, packetSize, byref status, byref msResponse, msTimeout)`**
 Initiates a ping(ICMP_ECHO) request towards the specified host.
 
 #### Parameters: <!-- omit in toc -->
@@ -144,12 +155,12 @@ Zero if ping request successfully sent, `SOCKET_ERROR(-1)` otherwise.
 `msResponse`: The round-trip time(in milliseconds) of the ping, if the target host replied.
 
 ---
-### TCP Functions
+### **TCP Functions**
 Functions in this section are used for TCP communications.
 
 
 
-### `AcceptConnection(ServerSocket)`
+### **`AcceptConnection(ServerSocket)`**
 Accepts a waiting connection from a listening server/listen socket.
 
 **Note:** If there is not a connection waiting, this function will block until a connection is received. Use [`IsReadAvailable()`](#isreadavailablesocket-mstimeout) to check if connections are waiting to prevent blocking.
@@ -162,7 +173,7 @@ A valid `socket` connection to the client, or `INVALID_SOCKET(0xFFFFFFFF)`. If `
 
 
 
-### `CloseSocket(sock)`
+### **`CloseSocket(sock)`**
 Closes an opened socket or server/listen socket.
 
 #### Parameters: <!-- omit in toc -->
@@ -173,8 +184,8 @@ Zero(0) if the socket was closed successfully, or `SOCKET_ERROR(-1)` if an error
 
 
 
-### `Connect(host$, srv$, msTimeout)`
-### `ConnectFrom(host$, srv$, msTimeout, localSrv$)`
+### **`Connect(host$, srv$, msTimeout)`**
+### **`ConnectFrom(host$, srv$, msTimeout, localSrv$)`**
 Opens a socket connection to the specified host and port. `ConnectFrom()` additionally allows selection of the local port to send from.
 
 #### Parameters: <!-- omit in toc -->
@@ -191,7 +202,7 @@ A valid socket connection to the specified server/port, or `INVALID_SOCKET(0xFFF
 
 
 
-### `CreateListenSocket(pService$)`
+### **`CreateListenSocket(pService$)`**
 Creates a server/listen socket to listen for connections on the specified port.
 
 #### Parameters: <!-- omit in toc -->
@@ -202,7 +213,7 @@ A valid server/listen socket, waiting for connections on the specified port, or 
 
 
 
-### `IsReadAvailable(socket, msTimeout)`
+### **`IsReadAvailable(socket, msTimeout)`**
 Checks if the specified socket has received data that can be retrieved, or if a server/listen socket has connections that can be accepted. Will wait the number of milliseconds specified before returning.
 
 #### Parameters: <!-- omit in toc -->
@@ -216,7 +227,7 @@ One(1) if data/connections are available, zero(0) otherwise.
 
 
 
-### `Receive(sock, byref buf$, bufLen)`
+### **`Receive(sock, byref buf$, bufLen)`**
 Retrieve data from the specified socket.
 
 **Note:** If there is no data waiting to be received from the socket, this function will block until more data arrives. Use the [`IsReadAvailable()`](#isreadavailablesocket-mstimeout) function to check if there's data available before calling `Receive()` to prevent blocking.
@@ -237,7 +248,7 @@ If there is an error retrieving data, this return value will be `SOCKET_ERROR(-1
 
 
 
-### `Send(sock, msg$, msgLen)`
+### **`Send(sock, msg$, msgLen)`**
 Tramsmits the specified data to the connected host.
 
 #### Parameters: <!-- omit in toc -->
@@ -255,24 +266,47 @@ Returns the number of bytes sent to the connected socket.
 If an error occurs in transmission, `SOCKET_ERROR(-1)` will be returned, and [`GetError()`](#geterror) can be called to retrieve a specific error code.
 
 ---
-### UDP Functions
-The functions past this point are used for UDP connections.
+### **UDP Functions**
+The functions past this point are used for UDP connections. Most of these are directly equivalent to their TCP versions, and will link to those versions for full behavior details.
 
-### `UDPClose(udpSock)`
+Anything that's different for UDP will be listed here.
+
+### **`UDPClose(udpSock)`**
 This function is the UDP equivalent of [`CloseSocket()`](#closesocketsock), and is used the same way.
 
-It is used for UDP sockets returned from [`UDPConnect()`](), [`UDPConnectFrom()`](), and [`UDPCreateListenSocket()`]().
+It is used for UDP sockets returned from [`UDPConnect()`](#udpconnecthost-srv-mstimeout), [`UDPConnectFrom()`](#udpconnectfromhost-srv-mstimeout-localsrv), and [`UDPCreateListenSocket()`](#udpcreatelistensocketpservice).
 
 
-Function UDPConnect(host$, srv$, msTimeout)
-Function UDPConnectFrom(host$, srv$, msTimeout, localSrv$)
-Function UDPCreateListenSocket(pService$)
-Function UDPGetInfoSize()
-Function UDPGetRemoteIP$(udpInfo$)
-Function UDPGetRemotePort(udpInfo$)
-Function UDPIsReadAvailable(udpSock, msTimeout)
-Function UDPReceive(udpSock, byref buf$, bufLen)
-Function UDPReceiveFrom(udpSock, byref buf$, bufLen, byref udpFrom$)
-Function UDPSend(udpSock, buf$, bufLen)
-Function UDPSendTo(udpSock, buf$, bufLen, udpInfo$)
+
+### **`UDPConnect(host$, srv$, msTimeout)`**
+### **`UDPConnectFrom(host$, srv$, msTimeout, localSrv$)`**
+These functions are the UDP equivalents of [`Connect()`](#connecthost-srv-mstimeout) and [`ConnectFrom()`](#connectfromhost-srv-mstimeout-localsrv).
+
+
+
+### **`UDPCreateListenSocket(pService$)`**
+This function is the UDP equivalent of [`CreateListenSocket()`](#createlistensocketpservice).
+
+The primary difference is, instead of listening for and acceping connections, data is sent and received directly to/from the returned socket using the [`UDPSendTo()`](#udpsendtoudpsock-buf-buflen-udpinfo) and [`UDPReceiveFrom()`](#udpreceivefromudpsock-byref-buf-buflen-byref-udpfrom) functions.
+
+
+
+### **`UDPGetInfoSize()`**
+This function retrives the size of the data blob used by [`UDPReceiveFrom()`](#udpreceivefromudpsock-byref-buf-buflen-byref-udpfrom) and [`UDPSendTo()`](#udpsendtoudpsock-buf-buflen-udpinfo) that identifies the other side of the connection. This function is called by [`UDPReceiveFrom()`](#udpreceivefromudpsock-byref-buf-buflen-byref-udpfrom) directly to make a proper buffer for the data blob; it is unlikely to be used by a program directly.
+
+#### Parameters: <!-- omit in toc -->
+None.
+
+#### Return value: <!-- omit in toc -->
+Size of the UDP data blob, in bytes.
+
+
+
+### **`UDPGetRemoteIP$(udpInfo$)`**
+### **`UDPGetRemotePort(udpInfo$)`**
+### **`UDPIsReadAvailable(udpSock, msTimeout)`**
+### **`UDPReceive(udpSock, byref buf$, bufLen)`**
+### **`UDPReceiveFrom(udpSock, byref buf$, bufLen, byref udpFrom$)`**
+### **`UDPSend(udpSock, buf$, bufLen)`**
+### **`UDPSendTo(udpSock, buf$, bufLen, udpInfo$)`**
 
