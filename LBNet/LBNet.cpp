@@ -23,24 +23,25 @@ ULONG lastError = 0;
 
 #ifdef _DEBUG
 HANDLE debugFile = INVALID_HANDLE_VALUE;
+HWND hNotepadLog = NULL;
 #endif
 
 #ifdef _DEBUG
 void WriteDebugLog(LPCSTR function, LPCSTR message)
 {
-	debugFile = CreateFile("wrapperdebug.log", FILE_APPEND_DATA, FILE_SHARE_READ, NULL,
-		OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (!hNotepadLog)
+	{
+		HWND hNotepad = FindWindow(NULL, "Untitled - Notepad");
+		hNotepadLog = GetWindow(hNotepad, GW_CHILD);
+	}
 
-	if (debugFile != INVALID_HANDLE_VALUE)
+	if (hNotepadLog)
 	{
 		DWORD msgLen = strlen(function) + strlen(message) + 10;
 		char * fullMsg = (char *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, msgLen);
 		DWORD outSize = snprintf(fullMsg, msgLen, "%s, %s\r\n", function, message);
-		DWORD written = 0;
-		WriteFile(debugFile, fullMsg, outSize, &written, NULL);
-		CloseHandle(debugFile);
+		SendMessage(hNotepadLog, EM_REPLACESEL, 0, (LPARAM)fullMsg);
 		HeapFree(GetProcessHeap(), 0, fullMsg);
-		debugFile = INVALID_HANDLE_VALUE;
 	}
 }
 #endif
@@ -120,7 +121,7 @@ SOCKET CreateListenSocketInternal(LPCSTR pService, int protocol)
 		{
 			//This will only happen after the initial socket open if 
 			//a timeout causes a socket to be prematurely closed.
-			s = socket(AF_UNSPEC, socktype, protocol);
+			s = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
 			if (s == INVALID_SOCKET)
 			{
 				lastError = WSAGetLastError();
@@ -251,7 +252,7 @@ SOCKET ConnectInternal(LPCSTR pHost, LPCSTR pService, ULONG msTimeout, LPCSTR pL
 		{
 			//This will only happen after the initial socket open if 
 			//a timeout causes a socket to be prematurely closed.
-			s = socket(AF_UNSPEC, socktype, protocol);
+			s = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
 			if (s == INVALID_SOCKET)
 			{
 				lastError = WSAGetLastError();

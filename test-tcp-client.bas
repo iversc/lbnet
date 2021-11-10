@@ -2,7 +2,7 @@
 
     input "press ENTER to begin.";a
 
-    connectServer$  = "127.0.0.1"
+    connectServer$  = "localhost"
     hSock = Connect(connectServer$, "50000", 0)
     if IsSocketInvalid(hSock) then
         print "Connect() failed. - ";GetError()
