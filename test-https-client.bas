@@ -2,8 +2,8 @@
 
     input "press ENTER to begin.";a
 
-    connectServer$  = "www.jmarshall.com"
-    hSock = Connect(connectServer$, "https", 0)
+    connectServer$  = "localhost"
+    hSock = Connect(connectServer$, "27016", 0)
     if IsSocketInvalid(hSock) then
         print "Connect() failed. - ";GetError()
         goto [doEnd]
@@ -165,7 +165,7 @@ End Function
 '==Helper Functions==
 '====================
 Sub OpenLBNetDLL
-    open "Debug\LBNet.dll" for DLL as #LBNet
+    open "LBNet.dll" for DLL as #LBNet
     a = InitLBNet()
 End Sub
 

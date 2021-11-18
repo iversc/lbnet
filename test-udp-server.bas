@@ -38,21 +38,21 @@
             print "Connection closed or reset by peer."
             goto [recvLoop]
         else
-            print "Socket error occurred. - ";theError
+            'With UDP, if a datagram comes in that is too large for the network stack
+            'or the specified buffer to handle, the data will be truncated, and the extra data
+            'is lost.  It will still return as many bytes as it can, but it will generate
+            'the error code WSAEMSGSIZE(10040) while doing so.
+            '
+            'While the lost data is unrecoverable, this will at least let the application know
+            'something was lost.
+            if theError = 10040 then
+                print "Received message too large for buffer or other network limit.  Datagram truncated, extra data lost."
+            else
+                print "Socket error occurred. - ";theError
+            end if
         end if
 
         goto [doClose]
-    end if
-
-    'With UDP, if a datagram comes in that is too large for the network stack
-    'or the specified buffer to handle, the data will be truncated, and the extra data
-    'is lost.  It will still return as many bytes as it can, but it will generate
-    'the error code WSAEMSGSIZE(10040) while doing so.
-    '
-    'While the lost data is unrecoverable, this will at least let the application know
-    'something was lost.
-    if theError = 10040 then
-        print "Received message too large for buffer or other network limit.  Datagram truncated, extra data lost."
     end if
 
     print "From IP: ";UDPGetRemoteIP$(recvFrom$);" - Port: ";UDPGetRemotePort(recvFrom$)
@@ -85,7 +85,7 @@
 '==Helper Functions==
 '====================
 Sub OpenLBNetDLL
-    open "Debug\LBNet.dll" for DLL as #LBNet
+    open "LBNet.dll" for DLL as #LBNet
     a = InitLBNet()
 End Sub
 

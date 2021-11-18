@@ -166,10 +166,9 @@
 
     responseHeaders$ = responseHeaders$ + "X-Request-Secure: " + secure$ + crlf$
 
-    open "output.html" for input as #file
-    content$ = input$(#file, lof(#file))
-    close #file
-
+    content$ = "<html><head><title>LB HTTPS Test</title></head>" + crlf$
+    content$ = content$ + "<body><h1>HTTPS test successful!</h1></body></html>"
+    
     lenContent = len(content$)
 
     responseHeaders$ = responseHeaders$ + "Content-Length: " + str$(lenContent) + crlf$
@@ -199,14 +198,14 @@
 [doEnd]
     print "Closing TLS DLL..."
     call CloseLBNetDLL
-    
+
     print "Performing wait..."
-    
+
     timer 1000, [asdffdsa]
     wait
 [asdffdsa]
     timer 0
-    
+
     print "Ending program..."
 
 Function randNum(min, max)
@@ -219,7 +218,7 @@ End Function
 '==Helper Functions==
 '====================
 Sub OpenLBNetDLL
-    open "Debug\LBNet.dll" for DLL as #LBNet
+    open "LBNet.dll" for DLL as #LBNet
     a = InitLBNet()
 End Sub
 
