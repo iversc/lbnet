@@ -38,3 +38,4 @@ EXPORTS
 	UDPGetRemotePort
 	UDPConnectFrom
 	ConnectFrom
+	RetrieveAddresses
