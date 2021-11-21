@@ -21,6 +21,15 @@
 WSADATA wsaData;
 ULONG lastError = 0;
 
+
+#define WORKING_BUFFER_SIZE 15000
+#define MAX_TRIES 3
+
+#define MALLOC(x) HeapAlloc(GetProcessHeap(), 0, (x))
+#define FREE(x) HeapFree(GetProcessHeap(), 0, (x))
+
+/* Note: could also use malloc() and free() */
+
 #ifdef _DEBUG
 HANDLE debugFile = INVALID_HANDLE_VALUE;
 HWND hNotepadLog = NULL;
@@ -72,12 +81,110 @@ LBNET_API int __stdcall EndLBNet()
 	return iResult;
 }
 
-LBNET_API SOCKET __stdcall CreateListenSocket(LPCSTR pService)
+LBNET_API int __stdcall RetrieveAddresses(LPSTR outputbuffer, ULONG outputbufLen)
 {
-	return CreateListenSocketInternal(pService, IPPROTO_TCP);
+	/* Declare and initialize variables */
+
+	DWORD dwSize = 0;
+	DWORD dwRetVal = 0;
+
+	unsigned int i = 0;
+
+	// Set the flags to pass to GetAdaptersAddresses
+	ULONG flags = GAA_FLAG_INCLUDE_PREFIX;
+
+	// default to unspecified address family (both)
+	ULONG family = AF_UNSPEC;
+
+	LPVOID lpMsgBuf = NULL;
+
+	PIP_ADAPTER_ADDRESSES pAddresses = NULL;
+	ULONG outBufLen = 0;
+	ULONG Iterations = 0;
+
+	char buff[100];
+	DWORD bufflen = 100;
+	int length = 0;
+	int count = 0;
+	
+	PIP_ADAPTER_ADDRESSES pCurrAddresses = NULL;
+	PIP_ADAPTER_UNICAST_ADDRESS pUnicast = NULL;
+
+	// Allocate a 15 KB buffer to start with.
+	outBufLen = WORKING_BUFFER_SIZE;
+
+	do {
+
+		pAddresses = (IP_ADAPTER_ADDRESSES*)MALLOC(outBufLen);
+		if (pAddresses == NULL) {
+			return 0;
+		}
+
+		dwRetVal =
+			GetAdaptersAddresses(family, flags, NULL, pAddresses, &outBufLen);
+
+		if (dwRetVal == ERROR_BUFFER_OVERFLOW) {
+			FREE(pAddresses);
+			pAddresses = NULL;
+		}
+		else {
+			break;
+		}
+
+		Iterations++;
+
+	} while ((dwRetVal == ERROR_BUFFER_OVERFLOW) && (Iterations < MAX_TRIES));
+
+	if (dwRetVal == NO_ERROR) {
+		// If successful, output some information from the data we received
+		pCurrAddresses = pAddresses;
+		while (pCurrAddresses) {
+			pUnicast = pCurrAddresses->FirstUnicastAddress;
+			if (pUnicast != NULL) {
+				for (i = 0; pUnicast != NULL; i++) {
+					if (pUnicast->Address.lpSockaddr->sa_family == AF_INET)
+					{
+						sockaddr_in* sa_in = (sockaddr_in*)pUnicast->Address.lpSockaddr;
+						if (length > 0) {
+							length += snprintf(outputbuffer + length, outputbufLen - length, "\n");
+						}
+						length += snprintf(outputbuffer+length, outputbufLen-length, inet_ntop(AF_INET, &(sa_in->sin_addr), buff, bufflen));
+						++count;
+					}
+					else if (pUnicast->Address.lpSockaddr->sa_family == AF_INET6)
+					{
+						sockaddr_in6* sa_in6 = (sockaddr_in6*)pUnicast->Address.lpSockaddr;
+						if (length > 0) {
+							length += snprintf(outputbuffer + length, outputbufLen - length, "\n");
+						}
+						length += snprintf(outputbuffer+length, outputbufLen-length, inet_ntop(AF_INET6, &(sa_in6->sin6_addr), buff, bufflen));
+						++count;
+					}
+					pUnicast = pUnicast->Next;
+				}
+			}
+			pCurrAddresses = pCurrAddresses->Next;
+		}
+	}
+	else {
+		if (pAddresses) {
+		FREE(pAddresses);
+		}
+		return 0;
+	}
+
+	if (pAddresses) {
+		FREE(pAddresses);
+	}
+	return count;
 }
 
-SOCKET CreateListenSocketInternal(LPCSTR pService, int protocol)
+LBNET_API SOCKET __stdcall CreateListenSocket(LPCSTR address, LPCSTR pService)
+{
+	return CreateListenSocketInternal(address, pService, IPPROTO_TCP);
+}
+
+SOCKET CreateListenSocketInternal(LPCSTR address, LPCSTR pService, int protocol)
 {
 	int boundFlag = 0;
 
@@ -105,7 +212,7 @@ SOCKET CreateListenSocketInternal(LPCSTR pService, int protocol)
 	addrinfo * result = NULL;
 	addrinfo * ptr = NULL;
 
-	DWORD dwResult = getaddrinfo(NULL, pService, &hints, &result);
+	DWORD dwResult = getaddrinfo(address, pService, &hints, &result);
 	if (dwResult != 0)
 	{
 		//getaddrinfo() failed.
