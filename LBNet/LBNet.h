@@ -21,7 +21,7 @@ void WriteDebugLog(LPCSTR function, LPCSTR message);
 
 LBNET_API BOOL __stdcall IsReadAvailable(SOCKET sock, int msTimeout);
 SOCKET ConnectInternal(LPCSTR pHost, LPCSTR pService, ULONG msTimeout, LPCSTR pLocalService, int protocol);
-SOCKET CreateListenSocketInternal(LPCSTR pService, int protocol);
+SOCKET CreateListenSocketInternal(LPCSTR address, LPCSTR pService, int protocol);
 
 
 typedef struct TLSCtxtWrapper
