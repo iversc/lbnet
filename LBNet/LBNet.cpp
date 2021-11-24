@@ -130,6 +130,17 @@ SOCKET CreateListenSocketInternal(LPCSTR pService, int protocol)
 			}
 		}
 
+		if (ptr->ai_family == AF_INET6)
+		{
+			DWORD v6o = 0;
+			if (setsockopt(s, IPPROTO_IPV6, IPV6_V6ONLY, (char*)&v6o, sizeof(v6o)) != 0)
+			{
+				lastError = WSAGetLastError();
+				freeaddrinfo(result);
+				return INVALID_SOCKET;
+			}
+		}
+
 		if (bind(s, ptr->ai_addr, ptr->ai_addrlen) != SOCKET_ERROR)
 		{
 			boundFlag = 1;
