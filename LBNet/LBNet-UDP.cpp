@@ -63,7 +63,12 @@ LBNET_API int __stdcall UDPReceive(SOCKET s, LPSTR buffer, ULONG bufLen, PLBNetU
 
 LBNET_API SOCKET __stdcall UDPCreateListenSocket(LPCSTR pService)
 {
-	return CreateListenSocketInternal(pService, IPPROTO_UDP);
+	return CreateListenSocketInternal(NULL, pService, IPPROTO_UDP);
+}
+
+LBNET_API SOCKET __stdcall UDPCreateListenSocketOnAddress(LPCSTR pAddress, LPCSTR pService)
+{
+	return CreateListenSocketInternal(pAddress, pService, IPPROTO_UDP);
 }
 
 LBNET_API LPCSTR __stdcall UDPGetRemoteIP(PLBNetUDPInfo udpInfo)

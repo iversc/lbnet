@@ -74,10 +74,15 @@ LBNET_API int __stdcall EndLBNet()
 
 LBNET_API SOCKET __stdcall CreateListenSocket(LPCSTR pService)
 {
-	return CreateListenSocketInternal(pService, IPPROTO_TCP);
+	return CreateListenSocketInternal(NULL, pService, IPPROTO_TCP);
 }
 
-SOCKET CreateListenSocketInternal(LPCSTR pService, int protocol)
+LBNET_API SOCKET __stdcall CreateListenSocketOnAddress(LPCSTR pAddress, LPCSTR pService)
+{
+	return CreateListenSocketInternal(pAddress, pService, IPPROTO_TCP);
+}
+
+SOCKET CreateListenSocketInternal(LPCSTR pAddress, LPCSTR pService, int protocol)
 {
 	int boundFlag = 0;
 
@@ -102,10 +107,12 @@ SOCKET CreateListenSocketInternal(LPCSTR pService, int protocol)
 	hints.ai_protocol = protocol;
 	hints.ai_flags = AI_PASSIVE;
 
+	if (pAddress) hints.ai_flags |= AI_NUMERICHOST;
+
 	addrinfo * result = NULL;
 	addrinfo * ptr = NULL;
 
-	DWORD dwResult = getaddrinfo(NULL, pService, &hints, &result);
+	DWORD dwResult = getaddrinfo(pAddress, pService, &hints, &result);
 	if (dwResult != 0)
 	{
 		//getaddrinfo() failed.

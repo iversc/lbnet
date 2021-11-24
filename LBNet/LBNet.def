@@ -38,3 +38,5 @@ EXPORTS
 	UDPGetRemotePort
 	UDPConnectFrom
 	ConnectFrom
+	CreateListenSocketOnAddress
+	UDPCreateListenSocketOnAddress
