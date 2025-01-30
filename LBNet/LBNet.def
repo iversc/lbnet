@@ -40,3 +40,6 @@ EXPORTS
 	ConnectFrom
 	CreateListenSocketOnAddress
 	UDPCreateListenSocketOnAddress
+	UDPEnableBroadcast
+	UDPSetRemoteIP
+	UDPSetRemotePort

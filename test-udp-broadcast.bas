@@ -1,9 +1,39 @@
+    call OpenLBNetDLL
+
+    input "press ENTER to begin.";a
+
+    connectServer$ = "192.168.1.255"
+
+    hSock = UDPConnect(connectServer$, "51968", 0)
+    if IsSocketInvalid(hSock) then
+
+        print "Connect() failed. - ";GetError()
+
+        goto [doEnd]
+
+    end if
+    
+    data$ = "TestData"
+
+    lenData = len(data$)
+
+    print "Send() - ";UDPSendTo(hSock, data$, lenData, sendinfo$)
+    print GetError()
+
+
+
+[doSockEnd]
+    a = UDPClose(hSock)
+
+[doEnd]
+    call CloseLBNetDLL
+
 
 '====================
 '==Helper Functions==
 '====================
 Sub OpenLBNetDLL
-    open "LBNet.dll" for DLL as #LBNet
+    open "Release\LBNet.dll" for DLL as #LBNet
     a = InitLBNet()
 End Sub
 

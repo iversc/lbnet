@@ -92,7 +92,46 @@ LBNET_API LPCSTR __stdcall UDPGetRemoteIP(PLBNetUDPInfo udpInfo)
 	return retVal;
 }
 
+LBNET_API int _stdcall UDPSetRemoteIP(PLBNetUDPInfo udpInfo, const char* ip, int family)
+{
+	int retVal = 0;
+
+	udpInfo->sockaddrLen = sizeof(SOCKADDR_STORAGE);
+
+	if (family == AF_INET6)
+	{
+		PSOCKADDR_IN6 sockAddr = (PSOCKADDR_IN6)&udpInfo->sockaddr;
+		sockAddr->sin6_family = AF_INET6;
+		retVal = inet_pton(AF_INET6, ip, &sockAddr->sin6_addr);
+	}
+	else
+	{
+		PSOCKADDR_IN sockAddr = (PSOCKADDR_IN)&udpInfo->sockaddr;
+		sockAddr->sin_family = AF_INET;
+		retVal = inet_pton(AF_INET, ip, &sockAddr->sin_addr);
+	}
+
+	return retVal;
+}
+
+LBNET_API int __stdcall UDPSetRemotePort(PLBNetUDPInfo udpInfo, USHORT port)
+{
+	USHORT network_port = htons(port);
+	((PSOCKADDR_IN)&udpInfo->sockaddr)->sin_port = network_port;
+	return 0;
+}
+
 LBNET_API int __stdcall UDPGetRemotePort(PLBNetUDPInfo udpInfo)
 {
 	return ntohs(((PSOCKADDR_IN)&udpInfo->sockaddr)->sin_port);
+}
+
+
+LBNET_API int __stdcall UDPEnableBroadcast(SOCKET s)
+{
+	BOOL broadcast = TRUE;
+	int retVal = setsockopt(s, SOL_SOCKET, SO_BROADCAST, (char *)&broadcast, sizeof(broadcast));
+	
+	lastError = WSAGetLastError();
+	return retVal;
 }
