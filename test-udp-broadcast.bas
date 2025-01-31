@@ -33,7 +33,7 @@
 '==Helper Functions==
 '====================
 Sub OpenLBNetDLL
-    open "Release\LBNet.dll" for DLL as #LBNet
+    open "LBNet.dll" for DLL as #LBNet
     a = InitLBNet()
 End Sub
 

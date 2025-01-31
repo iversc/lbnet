@@ -322,6 +322,20 @@ Function UDPSetRemotePort(byref udpInfo$, port)
     udpInfo$ = tempInfo$
 End Function
 
+Function CreateListenSocketOnAddress(pAddress$, pService$)
+    CallDLL #LBNet, "CreateListenSocketOnAddress",_
+    pAddress$ as ptr,_
+    pService$ as ptr,_
+    CreateListenSocketOnAddress as ulong
+End Function
+
+Function UDPCreateListenSocketOnAddress(pAddress$, pService$)
+    CallDLL #LBNet, "UDPCreateListenSocketOnAddress",_
+    pAddress$ as ptr,_
+    pService$ as ptr,_
+    UDPCreateListenSocketOnAddress as long
+End Function
+
 Function GetErrorText$(errnum)
     bufSize = 1024
     buf$ = space$(bufSize)

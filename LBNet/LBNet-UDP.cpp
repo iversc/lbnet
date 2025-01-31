@@ -111,6 +111,10 @@ LBNET_API int _stdcall UDPSetRemoteIP(PLBNetUDPInfo udpInfo, const char* ip, int
 		retVal = inet_pton(AF_INET, ip, &sockAddr->sin_addr);
 	}
 
+	if (retVal < 0) {
+		lastError = WSAGetLastError();
+	}
+
 	return retVal;
 }
 
